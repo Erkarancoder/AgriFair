@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Tractor,
   Building2,
@@ -11,6 +12,7 @@ import {
   Users
 } from 'lucide-react';
 import { ROLE_PROFILES } from '../../constants/roles';
+import { rolePath } from '../../constants/routes';
 
 const ROLE_ICON_MAP = {
   Tractor,
@@ -92,14 +94,20 @@ export default function RoleDiscoverySection({ onSelectRoleAction }) {
               {activeRole.description}
             </p>
 
-            <div className="pt-2">
-              <button
-                type="button"
-                onClick={() => onSelectRoleAction(activeRole)}
+            <div className="pt-2 flex flex-wrap items-center gap-3">
+              <Link
+                to={rolePath(activeRole.id)}
                 className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[#164e3b] hover:bg-[#123826] active:bg-[#0c2619] text-white font-semibold text-sm shadow-sm hover:shadow-md transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-700"
               >
                 <span>{activeRole.actionLabel}</span>
                 <ArrowRight className="w-4 h-4 text-emerald-300" />
+              </Link>
+              <button
+                type="button"
+                onClick={() => onSelectRoleAction(activeRole)}
+                className="inline-flex items-center gap-2 px-4 py-3 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 font-semibold text-sm transition-colors cursor-pointer"
+              >
+                <span>Quick Preview</span>
               </button>
             </div>
           </div>

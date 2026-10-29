@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { ArrowRight, Layers, Sparkles } from 'lucide-react';
 import { CATEGORIES } from '../../constants/categories';
+import { ROUTES } from '../../constants/routes';
 
 export default function CategoriesSection({ selectedCategory, onSelectCategory }) {
   const [imageErrors, setImageErrors] = useState({});
@@ -26,16 +28,25 @@ export default function CategoriesSection({ selectedCategory, onSelectCategory }
           </p>
         </div>
 
-        {selectedCategory !== 'all' && (
-          <button
-            type="button"
-            onClick={() => onSelectCategory('all')}
-            className="self-start md:self-auto px-3.5 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold transition-colors flex items-center gap-1.5"
+        <div className="flex items-center gap-2 self-start md:self-auto">
+          {selectedCategory !== 'all' && (
+            <button
+              type="button"
+              onClick={() => onSelectCategory('all')}
+              className="px-3.5 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold transition-colors flex items-center gap-1.5"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-emerald-700" />
+              <span>Show All</span>
+            </button>
+          )}
+          <Link
+            to={ROUTES.CATEGORIES}
+            className="px-3.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-semibold transition-colors flex items-center gap-1.5 border border-emerald-200"
           >
-            <Sparkles className="w-3.5 h-3.5 text-emerald-700" />
-            <span>Show All Categories</span>
-          </button>
-        )}
+            <span>All Categories Page</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
       </div>
 
       {/* Category Grid */}

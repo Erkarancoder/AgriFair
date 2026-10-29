@@ -6,6 +6,13 @@ export const USER_ROLES = {
   CONSUMER: 'consumer',
 };
 
+export const BUYER_ROLES = [
+  USER_ROLES.BUYER,
+  USER_ROLES.WHOLESALER,
+  USER_ROLES.RETAILER,
+  USER_ROLES.CONSUMER,
+];
+
 export const ROLE_PROFILES = [
   {
     id: USER_ROLES.FARMER,

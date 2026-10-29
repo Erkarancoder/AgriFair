@@ -1,0 +1,33 @@
+const ROLES = {
+  ADMIN: 'admin',
+  FARMER: 'farmer',
+  WHOLESALER: 'wholesaler',
+  RETAILER: 'retailer',
+  BUYER: 'buyer',
+  CONSUMER: 'consumer'
+};
+
+const ALL_ROLES = Object.values(ROLES);
+
+const ALLOWED_REGISTRATION_ROLES = [
+  ROLES.FARMER,
+  ROLES.WHOLESALER,
+  ROLES.RETAILER,
+  ROLES.BUYER,
+  ROLES.CONSUMER
+];
+
+const BUYER_ROLES = [
+  ROLES.BUYER,
+  ROLES.WHOLESALER,
+  ROLES.RETAILER,
+  ROLES.CONSUMER
+];
+
+module.exports = {
+  ROLES,
+  ALL_ROLES,
+  ALLOWED_REGISTRATION_ROLES,
+  BUYER_ROLES
+};
+

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Store,
   MapPin,
@@ -12,6 +13,7 @@ import {
   SearchX
 } from 'lucide-react';
 import { CATEGORIES } from '../../constants/categories';
+import { ROUTES } from '../../constants/routes';
 import Modal from '../../components/common/Modal';
 
 export default function MarketplacePreviewSection({
@@ -67,9 +69,18 @@ export default function MarketplacePreviewSection({
             </p>
           </div>
 
-          <div className="text-xs text-stone-500 bg-white px-3.5 py-2 rounded-xl border border-stone-200/80 shadow-2xs self-start md:self-auto flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>Showing {filteredCommodities.length} of {allCommodities.length} Commodities</span>
+          <div className="flex items-center gap-3 self-start md:self-auto">
+            <div className="text-xs text-stone-500 bg-white px-3.5 py-2 rounded-xl border border-stone-200/80 shadow-2xs flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Showing {filteredCommodities.length} of {allCommodities.length} Commodities</span>
+            </div>
+            <Link
+              to={ROUTES.MARKETPLACE}
+              className="text-xs font-semibold px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white flex items-center gap-1.5 transition-colors shadow-2xs"
+            >
+              <span>Full Marketplace Page</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
         </div>
 

@@ -1,11 +1,9 @@
 import { useState } from 'react';
-import AnnouncementBar from '../../components/common/AnnouncementBar';
-import Navbar from '../../components/common/Navbar';
-import Footer from '../../components/common/Footer';
-import AuthModalPreview from '../../components/common/AuthModalPreview';
+import { useOutletContext } from 'react-router-dom';
 import Modal from '../../components/common/Modal';
 
 import HeroSection from './HeroSection';
+import IndiaMapMarketTrendsSection from './IndiaMapMarketTrendsSection';
 import SearchSection from './SearchSection';
 import CategoriesSection from './CategoriesSection';
 import MarketplacePreviewSection from './MarketplacePreviewSection';
@@ -17,20 +15,19 @@ import FinalCTASection from './FinalCTASection';
 import { CATEGORIES } from '../../constants/categories';
 
 export default function HomePage() {
+  const outletContext = useOutletContext();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
 
-  // Auth / Role preview modal state
-  const [authModal, setAuthModal] = useState({ isOpen: false, mode: 'login' });
+  // Role preview modal state
   const [roleModalData, setRoleModalData] = useState(null);
 
   const handleOpenAuthModal = (mode = 'login') => {
-    setAuthModal({ isOpen: true, mode });
+    if (outletContext && outletContext.onOpenAuthModal) {
+      outletContext.onOpenAuthModal(mode);
+    }
   };
 
-  const handleCloseAuthModal = () => {
-    setAuthModal({ isOpen: false, mode: 'login' });
-  };
 
   const handleSelectRoleAction = (role) => {
     setRoleModalData(role);
@@ -69,70 +66,48 @@ export default function HomePage() {
   }).length;
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#faf9f5] text-stone-900 selection:bg-emerald-200 selection:text-emerald-950">
-      {/* 1. Announcement Bar */}
-      <AnnouncementBar />
+    <>
+      {/* 1. Hero Section */}
+      <HeroSection onOpenAuthModal={handleOpenAuthModal} />
 
-      {/* 2. Main Navigation Bar */}
-      <Navbar onOpenAuthModal={handleOpenAuthModal} />
+      {/* 2. Pan-India Mandi Geospatial Network & Live Trends (50/50 Map & Trends) */}
+      <IndiaMapMarketTrendsSection />
 
-      <main className="flex-1">
-        {/* 3. Hero Section */}
-        <HeroSection onOpenAuthModal={handleOpenAuthModal} />
-
-        {/* 4. Product Search Interface */}
-        <SearchSection
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          selectedCategory={selectedCategory}
-          onCategorySelect={handleCategorySelect}
-          onSubmitSearch={handleSearchSubmit}
-          totalResultsCount={totalResultsCount}
-        />
-
-        {/* 5. Product Categories */}
-        <CategoriesSection
-          selectedCategory={selectedCategory}
-          onSelectCategory={handleCategorySelect}
-        />
-
-        {/* 6. Traded Commodities & Specification Discovery */}
-        <MarketplacePreviewSection
-          selectedCategory={selectedCategory}
-          onCategorySelect={handleCategorySelect}
-          searchQuery={searchQuery}
-          onResetSearch={handleResetSearch}
-        />
-
-        {/* 7. How AgriFair Works */}
-        <HowItWorksSection onOpenAuthModal={handleOpenAuthModal} />
-
-        {/* 8. Platform Benefits */}
-        <PlatformBenefitsSection />
-
-        {/* 9. Role-Oriented Entry Section */}
-        <RoleDiscoverySection onSelectRoleAction={handleSelectRoleAction} />
-
-        {/* 10. Final Call to Action */}
-        <FinalCTASection onOpenAuthModal={handleOpenAuthModal} />
-      </main>
-
-      {/* 11. Footer */}
-      <Footer
+      {/* 3. Product Search Interface */}
+      <SearchSection
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        selectedCategory={selectedCategory}
         onCategorySelect={handleCategorySelect}
-        onOpenAuthModal={handleOpenAuthModal}
+        onSubmitSearch={handleSearchSubmit}
+        totalResultsCount={totalResultsCount}
       />
 
-      {/* Auth Preview Modal */}
-      <AuthModalPreview
-        isOpen={authModal.isOpen}
-        onClose={handleCloseAuthModal}
-        mode={authModal.mode}
-        onSelectRole={() => {
-          const el = document.getElementById('roles');
-          if (el) el.scrollIntoView({ behavior: 'smooth' });
-        }}
+      {/* 3. Product Categories */}
+      <CategoriesSection
+        selectedCategory={selectedCategory}
+        onSelectCategory={handleCategorySelect}
       />
+
+      {/* 4. Traded Commodities & Specification Discovery */}
+      <MarketplacePreviewSection
+        selectedCategory={selectedCategory}
+        onCategorySelect={handleCategorySelect}
+        searchQuery={searchQuery}
+        onResetSearch={handleResetSearch}
+      />
+
+      {/* 5. How AgriFair Works */}
+      <HowItWorksSection onOpenAuthModal={handleOpenAuthModal} />
+
+      {/* 6. Platform Benefits */}
+      <PlatformBenefitsSection />
+
+      {/* 7. Role-Oriented Entry Section */}
+      <RoleDiscoverySection onSelectRoleAction={handleSelectRoleAction} />
+
+      {/* 8. Final Call to Action */}
+      <FinalCTASection onOpenAuthModal={handleOpenAuthModal} />
 
       {/* Role Action Preview Modal */}
       {roleModalData && (
@@ -174,6 +149,6 @@ export default function HomePage() {
           </div>
         </Modal>
       )}
-    </div>
+    </>
   );
 }

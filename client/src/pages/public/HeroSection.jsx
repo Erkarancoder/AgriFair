@@ -1,10 +1,73 @@
-import { useState } from 'react';
-import { ArrowRight, Sparkles, CheckCircle2, ShieldCheck, Sprout, Store, Tractor } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ArrowRight, Sparkles, CheckCircle2, ShieldCheck, Sprout, Store, Tractor, Users } from 'lucide-react';
 import { ROUTES } from '../../constants/routes';
+import { communityService } from '../../services/community.service';
+import JoinCommunityModal from '../../components/community/JoinCommunityModal';
+
+const DEFAULT_MEMBERS = [
+  {
+    _id: 'seed-1',
+    name: 'Sardar Harpreet Singh',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=160&h=160&fit=crop&crop=faces&auto=format&q=80'
+  },
+  {
+    _id: 'seed-2',
+    name: 'Rameshwar Yadav',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=160&h=160&fit=crop&crop=faces&auto=format&q=80'
+  },
+  {
+    _id: 'seed-3',
+    name: 'Sunita Devi',
+    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=160&h=160&fit=crop&crop=faces&auto=format&q=80'
+  },
+  {
+    _id: 'seed-4',
+    name: 'Tukaram Shinde',
+    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=160&h=160&fit=crop&crop=faces&auto=format&q=80'
+  }
+];
 
 export default function HeroSection({ onOpenAuthModal }) {
   const [imgLoaded, setImgLoaded] = useState(false);
   const [imgError, setImgError] = useState(false);
+  const [isCommunityModalOpen, setIsCommunityModalOpen] = useState(false);
+  const [communityMembers, setCommunityMembers] = useState(DEFAULT_MEMBERS);
+  const [totalCommunityCount, setTotalCommunityCount] = useState(2440);
+  const [newlyJoinedToast, setNewlyJoinedToast] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchTopMembers = async () => {
+      try {
+        const res = await communityService.getMembers({ limit: 4 });
+        if (isMounted && res.success && res.members?.length > 0) {
+          setCommunityMembers(res.members);
+          if (res.stats?.displayTotalCount) {
+            setTotalCommunityCount(res.stats.displayTotalCount);
+          }
+        }
+      } catch (err) {
+        console.warn('Using default community avatars preview:', err);
+      }
+    };
+    fetchTopMembers();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleMemberJoined = (newMember, updatedTotal) => {
+    if (newMember) {
+      setCommunityMembers((prev) => [newMember, ...prev.slice(0, 3)]);
+      if (updatedTotal) {
+        setTotalCommunityCount(updatedTotal);
+      } else {
+        setTotalCommunityCount((prev) => prev + 1);
+      }
+      setNewlyJoinedToast(`Welcome ${newMember.name}! Your photo is now displayed in AgriFair community.`);
+      setTimeout(() => setNewlyJoinedToast(null), 6000);
+    }
+  };
 
   return (
     <section className="relative overflow-hidden pt-8 pb-16 md:pt-14 md:pb-24 bg-gradient-to-b from-[#faf9f5] via-[#f4f7f4]/40 to-[#faf9f5] border-b border-stone-200/60">
@@ -41,8 +104,16 @@ export default function HeroSection({ onOpenAuthModal }) {
               AgriFair connects farmers directly with wholesalers, retailers, and commercial buyers. Discover farm-fresh harvests, review transparent specifications, and build trustworthy trade connections across India.
             </p>
 
-            {/* CTA Buttons */}
-            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3.5">
+            {/* Newly Joined Notification Toast */}
+            {newlyJoinedToast && (
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-semibold shadow-md animate-in fade-in slide-in-from-top-1">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>{newlyJoinedToast}</span>
+              </div>
+            )}
+
+            {/* CTA Buttons & Community Face-Pile */}
+            <div className="pt-2 flex flex-col sm:flex-row flex-wrap items-center justify-center lg:justify-start gap-3.5">
               <a
                 href={ROUTES.MARKETPLACE}
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-[#164e3b] hover:bg-[#123826] active:bg-[#0c2619] text-white font-semibold text-base shadow-md shadow-emerald-950/15 hover:shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:ring-offset-2"
@@ -50,15 +121,51 @@ export default function HeroSection({ onOpenAuthModal }) {
                 <span>Explore Marketplace</span>
                 <ArrowRight className="w-4.5 h-4.5 text-emerald-300" />
               </a>
+
+              {/* Join AgriFair Button */}
               <button
                 type="button"
-                onClick={() => onOpenAuthModal('register')}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-white hover:bg-stone-50 active:bg-stone-100 text-stone-800 font-semibold text-base border border-stone-300 shadow-2xs hover:border-emerald-700 hover:text-emerald-800 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                onClick={() => setIsCommunityModalOpen(true)}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl bg-white hover:bg-stone-50 active:bg-stone-100 text-stone-800 font-semibold text-base border border-stone-300 shadow-2xs hover:border-emerald-700 hover:text-emerald-800 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-600 group"
               >
-                <Sparkles className="w-4.5 h-4.5 text-emerald-600" />
+                <Sparkles className="w-4.5 h-4.5 text-emerald-600 group-hover:rotate-12 transition-transform" />
                 <span>Join AgriFair</span>
               </button>
+
+              {/* Live Member Avatar Stack & Social Proof */}
+              <button
+                type="button"
+                onClick={() => setIsCommunityModalOpen(true)}
+                className="inline-flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-white/90 hover:bg-stone-50 border border-stone-200/90 shadow-2xs transition-all text-left hover:border-emerald-600 group"
+                title="Click to view all joined farmers and members"
+              >
+                <div className="flex -space-x-2 overflow-hidden">
+                  {communityMembers.map((member, index) => (
+                    <img
+                      key={member._id || index}
+                      src={member.avatar}
+                      alt={member.name}
+                      className="inline-block h-8 w-8 rounded-full ring-2 ring-white object-cover"
+                      onError={(e) => {
+                        e.target.src = 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=160&h=160&fit=crop&crop=faces&auto=format&q=80';
+                      }}
+                    />
+                  ))}
+                </div>
+                <div className="text-left pr-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                    <span className="text-xs font-black text-stone-900 group-hover:text-emerald-800 transition-colors">
+                      {totalCommunityCount.toLocaleString()}+ Joined
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-stone-500 font-medium block leading-none mt-0.5">
+                    Farmers & Traders
+                  </span>
+                </div>
+              </button>
             </div>
+
 
             {/* Value Checkpoints */}
             <div className="pt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-left border-t border-stone-200/80">
@@ -168,6 +275,14 @@ export default function HeroSection({ onOpenAuthModal }) {
           </div>
         </div>
       </div>
+
+      {/* AgriFair Community Network Modal */}
+      <JoinCommunityModal
+        isOpen={isCommunityModalOpen}
+        onClose={() => setIsCommunityModalOpen(false)}
+        onMemberJoined={handleMemberJoined}
+      />
     </section>
   );
 }
+

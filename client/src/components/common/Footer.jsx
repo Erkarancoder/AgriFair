@@ -1,7 +1,8 @@
+import { Link } from 'react-router-dom';
 import { Sprout, ShieldCheck, ArrowUpRight, Heart } from 'lucide-react';
-import { ROUTES } from '../../constants/routes';
+import { ROUTES, categoryPath } from '../../constants/routes';
 
-export default function Footer({ onCategorySelect, onOpenAuthModal }) {
+export default function Footer() {
   const currentYear = new Date().getFullYear();
 
   const marketplaceLinks = [
@@ -14,18 +15,18 @@ export default function Footer({ onCategorySelect, onOpenAuthModal }) {
   ];
 
   const participantLinks = [
-    { label: 'For Farmers & Growers', href: '#roles' },
-    { label: 'For Wholesalers & Aggregators', href: '#roles' },
-    { label: 'For Retailers & Supermarkets', href: '#roles' },
-    { label: 'For Institutional Bulk Buyers', href: '#roles' },
-    { label: 'For Direct Consumers', href: '#roles' },
+    { label: 'For Farmers & Growers', href: ROUTES.ROLE_FARMER },
+    { label: 'For Wholesalers & Aggregators', href: ROUTES.ROLE_WHOLESALER },
+    { label: 'For Retailers & Supermarkets', href: ROUTES.ROLE_RETAILER },
+    { label: 'For Institutional Bulk Buyers', href: ROUTES.ROLE_BULK_BUYER },
+    { label: 'For Direct Consumers', href: ROUTES.ROLE_CONSUMER },
   ];
 
   const platformLinks = [
-    { label: 'How AgriFair Works', href: '#how-it-works' },
-    { label: 'Platform Value & Benefits', href: '#benefits' },
-    { label: 'Mandi Discovery (Roadmap)', href: '#how-it-works' },
-    { label: 'Trade Transparency Standard', href: '#benefits' },
+    { label: 'How AgriFair Works', href: ROUTES.HOW_IT_WORKS },
+    { label: 'About AgriFair Platform', href: ROUTES.ABOUT },
+    { label: 'Platform Value & Benefits', href: ROUTES.BENEFITS },
+    { label: 'Marketplace Discovery', href: ROUTES.MARKETPLACE },
   ];
 
   return (
@@ -34,7 +35,7 @@ export default function Footer({ onCategorySelect, onOpenAuthModal }) {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 lg:gap-8 pb-12 border-b border-[#1b4e3a]">
           {/* Brand Column */}
           <div className="lg:col-span-2 space-y-4">
-            <a href={ROUTES.HOME} className="inline-flex items-center gap-3 group">
+            <Link to={ROUTES.HOME} className="inline-flex items-center gap-3 group">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-800 text-white flex items-center justify-center shadow-md">
                 <Sprout className="w-6 h-6 text-emerald-200" aria-hidden="true" />
               </div>
@@ -46,13 +47,13 @@ export default function Footer({ onCategorySelect, onOpenAuthModal }) {
                   Connecting Farmers to Markets
                 </span>
               </div>
-            </a>
+            </Link>
             <p className="text-sm text-stone-300/90 leading-relaxed max-w-sm">
               AgriFair is a dedicated agricultural marketplace platform designed to bridge the gap between farmers, wholesalers, retailers, and bulk buyers with transparent produce discovery, direct trading terms, and honest specifications.
             </p>
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#164332] text-emerald-300 text-xs border border-[#205842]">
               <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>Phase 1 Architecture — Frontend Foundation</span>
+              <span>Phase 2 Architecture — Marketplace Foundation</span>
             </div>
           </div>
 
@@ -64,18 +65,13 @@ export default function Footer({ onCategorySelect, onOpenAuthModal }) {
             <ul className="space-y-2.5 text-sm">
               {marketplaceLinks.map((item) => (
                 <li key={item.label}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (onCategorySelect) onCategorySelect(item.categoryId);
-                      const el = document.getElementById('marketplace');
-                      if (el) el.scrollIntoView({ behavior: 'smooth' });
-                    }}
+                  <Link
+                    to={categoryPath(item.categoryId)}
                     className="text-stone-300 hover:text-white transition-colors text-left flex items-center gap-1 group"
                   >
                     <span>{item.label}</span>
                     <ArrowUpRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity text-emerald-400" />
-                  </button>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -89,22 +85,21 @@ export default function Footer({ onCategorySelect, onOpenAuthModal }) {
             <ul className="space-y-2.5 text-sm">
               {participantLinks.map((item) => (
                 <li key={item.label}>
-                  <a
-                    href={item.href}
+                  <Link
+                    to={item.href}
                     className="text-stone-300 hover:text-white transition-colors block"
                   >
                     {item.label}
-                  </a>
+                  </Link>
                 </li>
               ))}
               <li className="pt-2">
-                <button
-                  type="button"
-                  onClick={() => onOpenAuthModal && onOpenAuthModal('register')}
+                <Link
+                  to={ROUTES.ROLES}
                   className="text-xs font-semibold text-emerald-300 hover:text-white underline underline-offset-4"
                 >
-                  Join as Participant →
-                </button>
+                  View All Roles →
+                </Link>
               </li>
             </ul>
           </div>
@@ -115,16 +110,28 @@ export default function Footer({ onCategorySelect, onOpenAuthModal }) {
               Platform & Mission
             </h4>
             <ul className="space-y-2.5 text-sm">
-              {platformLinks.map((item) => (
-                <li key={item.label}>
-                  <a
-                    href={item.href}
-                    className="text-stone-300 hover:text-white transition-colors block"
-                  >
-                    {item.label}
-                  </a>
-                </li>
-              ))}
+              {platformLinks.map((item) => {
+                const isHash = item.href.includes('#');
+                return (
+                  <li key={item.label}>
+                    {isHash ? (
+                      <a
+                        href={item.href}
+                        className="text-stone-300 hover:text-white transition-colors block"
+                      >
+                        {item.label}
+                      </a>
+                    ) : (
+                      <Link
+                        to={item.href}
+                        className="text-stone-300 hover:text-white transition-colors block"
+                      >
+                        {item.label}
+                      </Link>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
             <div className="mt-6 pt-4 border-t border-[#1b4e3a]">
               <p className="text-xs text-stone-400 leading-relaxed">

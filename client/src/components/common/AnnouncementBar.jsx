@@ -18,8 +18,8 @@ export default function AnnouncementBar() {
             <Sprout className="w-3.5 h-3.5" aria-hidden="true" />
           </span>
           <p className="text-center sm:text-left leading-tight text-white/95">
-            <span className="font-semibold text-emerald-300">AgriFair Mission:</span>{' '}
-            Bridging rural agricultural producers directly with bulk buyers, wholesalers & retailers across India.
+           <marquee behavior="scroll" direction="" loop="infinite"> <span className="font-semibold text-emerald-300">AgriFair Mission:</span>{' '}
+            Bridging rural agricultural producers directly with bulk buyers, wholesalers & retailers across India.</marquee>
           </p>
           <a
             href="#how-it-works"
