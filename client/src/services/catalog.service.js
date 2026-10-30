@@ -152,6 +152,14 @@ export const catalogService = {
       `/products/${encodeURIComponent(productId)}/images/${encodeURIComponent(publicId)}`
     );
     return response.data;
+  },
+
+  /**
+   * Auto-fetch State, District, and Village list by 6-digit Indian PIN Code
+   */
+  async lookupPincode(pincode) {
+    const response = await api.get(`/location/pincode/${encodeURIComponent(pincode)}`);
+    return response.data;
   }
 };
 

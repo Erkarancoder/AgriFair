@@ -105,16 +105,25 @@ const initiatePayment = async (req, res, next) => {
     }
 
     // 5. Create Razorpay order via official SDK
-    const rzpOrder = await createRazorpayOrder({
-      receipt: `ord_${order._id.toString()}`.slice(0, 40),
-      amountPaise: amountInPaise,
-      currency: order.currency || 'INR',
-      notes: {
-        orderId: order._id.toString(),
-        buyerId: req.user._id.toString(),
-        productId: order.product?._id ? order.product._id.toString() : ''
-      }
-    });
+    let rzpOrder;
+    try {
+      rzpOrder = await createRazorpayOrder({
+        receipt: `ord_${order._id.toString()}`.slice(0, 40),
+        amountPaise: amountInPaise,
+        currency: order.currency || 'INR',
+        notes: {
+          orderId: order._id.toString(),
+          buyerId: req.user._id.toString(),
+          productId: order.product?._id ? order.product._id.toString() : ''
+        }
+      });
+    } catch (rzpErr) {
+      return res.status(rzpErr.status || 502).json({
+        success: false,
+        code: 'GATEWAY_ERROR',
+        message: rzpErr.message || 'Unable to connect to Razorpay payment gateway.'
+      });
+    }
 
     // 6. Record payment attempt and link provider order ID
     order.razorpayOrderId = rzpOrder.id;
@@ -749,12 +758,93 @@ const reconcilePayment = async (req, res, next) => {
   }
 };
 
+/**
+ * POST /api/payments/demo-settle
+ * Allows instant direct settlement / test payment verification during hackathon demonstration
+ */
+const demoSettlePayment = async (req, res, next) => {
+  try {
+    const { orderId, paymentMethod = 'Razorpay (Test / Demo Mode)' } = req.body;
+
+    if (!orderId || !mongoose.Types.ObjectId.isValid(orderId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'A valid order ID is required.'
+      });
+    }
+
+    const order = await Order.findById(orderId).populate('product');
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found.'
+      });
+    }
+
+    if (order.buyer.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to settle payment for this order.'
+      });
+    }
+
+    if (order.paymentStatus === 'paid') {
+      return res.status(400).json({
+        success: false,
+        message: 'This order has already been paid and settled.'
+      });
+    }
+
+    const fakePaymentId = `pay_demo_${Date.now()}`;
+    order.paymentStatus = 'paid';
+    order.paymentMethod = paymentMethod;
+    order.razorpayPaymentId = fakePaymentId;
+    order.paidAt = new Date();
+    order.statusHistory.push({
+      status: order.status,
+      changedBy: req.user._id,
+      changedAt: new Date(),
+      note: `Payment settled successfully via ${paymentMethod} (Amount: ₹${order.totalAmount})`
+    });
+
+    await order.save();
+
+    // Push real-time notification to the producer
+    notificationService
+      .createNotification({
+        recipient: order.farmer,
+        type: 'payment',
+        title: 'Payment Received!',
+        message: `${req.user.name} paid ₹${order.totalAmount.toLocaleString('en-IN')} for ${order.product?.name || 'produce lot'}.`,
+        entityId: order._id,
+        entityType: 'Order',
+        link: '/farmer/orders'
+      })
+      .catch((e) => console.warn('[Payment Demo Notif Warn]:', e.message));
+
+    const populated = await Order.findById(order._id)
+      .populate('product', 'name price unit status quantity location images')
+      .populate('farmer', 'name email phone')
+      .populate('buyer', 'name email phone')
+      .lean();
+
+    return res.status(200).json({
+      success: true,
+      message: `Payment of ₹${order.totalAmount.toLocaleString('en-IN')} successfully settled!`,
+      data: populated
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getPaymentConfig,
   initiatePayment,
   verifyPayment,
   handleWebhook,
   initiateRefund,
-  reconcilePayment
+  reconcilePayment,
+  demoSettlePayment
 };
 

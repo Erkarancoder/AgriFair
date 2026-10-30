@@ -498,31 +498,67 @@ export default function ConversationsPage() {
 
                 {/* Safe Contact & Bargaining Trigger Header Actions */}
                 <div className="flex items-center gap-2">
-                  {/* Phone direct call if allowed */}
-                  {activeConversation.farmer?.allowDirectCalls && activeConversation.farmer?.phone ? (
-                    <a
-                      href={`tel:${activeConversation.farmer.phone}`}
-                      className="px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-900 hover:bg-emerald-100 border border-emerald-200 text-xs font-bold inline-flex items-center gap-1.5"
-                    >
-                      <Phone className="w-3.5 h-3.5 text-emerald-700" />
-                      <span className="hidden sm:inline">Call</span>
-                    </a>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={handleRequestCall}
-                      className="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold inline-flex items-center gap-1.5 transition-colors"
-                    >
-                      <PhoneCall className="w-3.5 h-3.5 text-stone-600" />
-                      <span className="hidden sm:inline">Request Call</span>
-                    </button>
-                  )}
+                  {/* WhatsApp Quick Link if counterparty phone exists */}
+                  {(() => {
+                    const isBuyer = String(activeConversation.buyer?._id) === String(user?._id);
+                    const otherParty = isBuyer ? activeConversation.farmer : activeConversation.buyer;
+                    const rawPhone = otherParty?.phone ? String(otherParty.phone).replace(/\D/g, '') : '';
+                    const cleanPhone = rawPhone.length === 10 ? `91${rawPhone}` : rawPhone;
+
+                    if (!cleanPhone) return null;
+
+                    return (
+                      <a
+                        href={`https://wa.me/${cleanPhone}?text=${encodeURIComponent(
+                          `Namaste ${otherParty?.name || ''}, I am connecting via AgriFair regarding ${activeConversation.product?.name || 'produce lot'}. Let us finalize our deal.`
+                        )}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-xs transition-colors"
+                        title="Open direct WhatsApp discussion"
+                      >
+                        <Phone className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">WhatsApp</span>
+                      </a>
+                    );
+                  })()}
+
+                  {/* Direct Phone Call if allowed or phone is known */}
+                  {(() => {
+                    const isBuyer = String(activeConversation.buyer?._id) === String(user?._id);
+                    const otherParty = isBuyer ? activeConversation.farmer : activeConversation.buyer;
+                    const phone = otherParty?.phone;
+
+                    if (phone) {
+                      return (
+                        <a
+                          href={`tel:${phone}`}
+                          className="px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-900 hover:bg-emerald-100 border border-emerald-200 text-xs font-bold inline-flex items-center gap-1.5 transition-colors"
+                          title={`Direct call to ${otherParty?.name || 'producer'}`}
+                        >
+                          <PhoneCall className="w-3.5 h-3.5 text-emerald-700" />
+                          <span className="hidden sm:inline">Call</span>
+                        </a>
+                      );
+                    }
+
+                    return (
+                      <button
+                        type="button"
+                        onClick={handleRequestCall}
+                        className="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold inline-flex items-center gap-1.5 transition-colors"
+                      >
+                        <PhoneCall className="w-3.5 h-3.5 text-stone-600" />
+                        <span className="hidden sm:inline">Request Call</span>
+                      </button>
+                    );
+                  })()}
 
                   {/* Make an Offer Button */}
                   <button
                     type="button"
                     onClick={handleOpenNewOffer}
-                    className="px-3 py-1.5 rounded-xl bg-[#164e3b] hover:bg-[#123826] text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-xs"
+                    className="px-3 py-1.5 rounded-xl bg-[#164e3b] hover:bg-[#123826] text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-xs transition-all"
                   >
                     <DollarSign className="w-3.5 h-3.5" />
                     <span>Propose Offer</span>

@@ -37,7 +37,10 @@ const config = {
     webhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET || '',
     isConfigured: Boolean(
       process.env.RAZORPAY_KEY_ID &&
-      process.env.RAZORPAY_KEY_SECRET
+      process.env.RAZORPAY_KEY_SECRET &&
+      process.env.RAZORPAY_KEY_ID !== 'rzp_test_yourKeyIdHere' &&
+      process.env.RAZORPAY_KEY_SECRET !== 'your_razorpay_secret_here' &&
+      !process.env.RAZORPAY_KEY_ID.includes('yourKeyIdHere')
     )
   }
 };

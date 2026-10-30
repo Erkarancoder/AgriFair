@@ -84,7 +84,7 @@ const getProducts = async (req, res, next) => {
         .skip(skip)
         .limit(parsedLimit)
         .populate('category', 'name slug iconName tagline')
-        .populate('owner', 'name role')
+        .populate('owner', 'name role phone allowDirectCalls')
         .select('-__v')
         .lean()
     ]);
@@ -272,7 +272,9 @@ const createProduct = async (req, res, next) => {
       location: {
         state: location.state.trim(),
         district: (location.district || '').trim(),
-        mandi: (location.mandi || '').trim()
+        village: (location.village || location.mandi || '').trim(),
+        pincode: (location.pincode || '').trim(),
+        mandi: (location.village || location.mandi || '').trim()
       },
       status: 'active',
       images: finalImageUrls,
@@ -467,7 +469,9 @@ const updateProduct = async (req, res, next) => {
       product.location = {
         state: location.state.trim(),
         district: (location.district || '').trim(),
-        mandi: (location.mandi || '').trim()
+        village: (location.village || location.mandi || '').trim(),
+        pincode: (location.pincode || '').trim(),
+        mandi: (location.village || location.mandi || '').trim()
       };
     }
 

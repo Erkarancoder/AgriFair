@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const { Order } = require('../models/Order');
 const { Product } = require('../models/Product');
+const { NegotiationOffer } = require('../models/NegotiationOffer');
 const { BUYER_ROLES } = require('../constants/roles');
 const {
   ORDER_STATUSES,
@@ -124,8 +125,25 @@ const createOrder = async (req, res, next) => {
       });
     }
 
-    // 11. Server-side totals derivation with 2 decimal rounding
-    const priceSnapshot = product.price;
+    // 11. Check if buyer and farmer reached an accepted price negotiation
+    let priceSnapshot = product.price;
+    let isNegotiated = false;
+    let negotiatedOfferId = null;
+
+    const acceptedOffer = await NegotiationOffer.findOne({
+      buyer: req.user._id,
+      product: product._id,
+      status: 'accepted',
+      order: null
+    }).sort({ updatedAt: -1 });
+
+    if (acceptedOffer) {
+      priceSnapshot = acceptedOffer.price;
+      isNegotiated = true;
+      negotiatedOfferId = acceptedOffer._id;
+    }
+
+    // Server-side totals derivation with 2 decimal rounding
     const totalAmount = Number((priceSnapshot * parsedQty).toFixed(2));
     const currency = product.currency || 'INR';
 
@@ -141,18 +159,28 @@ const createOrder = async (req, res, next) => {
       totalAmount,
       buyerMessage: rawMessage.trim(),
       status: 'pending',
+      isNegotiated,
+      negotiatedOffer: negotiatedOfferId,
+      negotiatedAt: isNegotiated ? new Date() : null,
       isStockDeducted: false,
       statusHistory: [
         {
           status: 'pending',
           changedBy: req.user._id,
           changedAt: new Date(),
-          note: 'Initial purchase request submitted by buyer'
+          note: isNegotiated
+            ? `Negotiated purchase inquiry submitted at agreed rate ₹${priceSnapshot}/${product.unit}`
+            : 'Initial purchase request submitted by buyer'
         }
       ]
     });
 
     await order.save();
+
+    if (acceptedOffer) {
+      acceptedOffer.order = order._id;
+      await acceptedOffer.save();
+    }
 
     // Asynchronously dispatch idempotent notification to farmer
     notificationService

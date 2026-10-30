@@ -26,7 +26,13 @@ const getRazorpayInstance = () => {
  * Checks whether real Razorpay credentials are configured in the environment.
  */
 const isRazorpayConfigured = () => {
-  return Boolean(config.razorpay.keyId && config.razorpay.keySecret);
+  return Boolean(
+    config.razorpay.keyId &&
+    config.razorpay.keySecret &&
+    config.razorpay.keyId !== 'rzp_test_yourKeyIdHere' &&
+    config.razorpay.keySecret !== 'your_razorpay_secret_here' &&
+    !config.razorpay.keyId.includes('yourKeyIdHere')
+  );
 };
 
 /**
@@ -68,13 +74,17 @@ const createRazorpayOrder = async ({ receipt, amountPaise, currency = 'INR', not
     const order = await instance.orders.create(options);
     return order;
   } catch (err) {
-    // Sanitize error logging to ensure no secrets or sensitive data are leaked
+    const safeMsg = err.error?.description || err.message || 'Razorpay order creation failed';
+    const safeStatus = err.statusCode || 502;
     console.error('[Razorpay Order Creation Failed]:', {
-      message: err.message,
-      statusCode: err.statusCode,
+      message: safeMsg,
+      statusCode: safeStatus,
       receipt
     });
-    throw err;
+    const safeError = new Error(safeMsg);
+    safeError.status = safeStatus;
+    safeError.code = 'GATEWAY_ERROR';
+    throw safeError;
   }
 };
 

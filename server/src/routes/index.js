@@ -11,6 +11,7 @@ const conversationRoutes = require('./conversation.routes');
 const negotiationRoutes = require('./negotiation.routes');
 const paymentRoutes = require('./payment.routes');
 const notificationRoutes = require('./notification.routes');
+const locationRoutes = require('./location.routes');
 
 const router = express.Router();
 
@@ -63,6 +64,9 @@ router.use('/payments', paymentRoutes);
 
 // Notifications & Alert Lifecycle routes
 router.use('/notifications', notificationRoutes);
+
+// Location & Postal PIN Code routes
+router.use('/location', locationRoutes);
 
 // Secure Admin & Operational Operations routes
 const adminRoutes = require('./admin.routes');

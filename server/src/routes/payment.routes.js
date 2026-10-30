@@ -5,7 +5,8 @@ const {
   verifyPayment,
   handleWebhook,
   initiateRefund,
-  reconcilePayment
+  reconcilePayment,
+  demoSettlePayment
 } = require('../controllers/payment.controller');
 const { protect } = require('../middleware/auth');
 const { paymentMutationLimiter } = require('../middleware/rateLimiter');
@@ -29,6 +30,9 @@ router.post('/refund', protect, paymentMutationLimiter, initiateRefund);
 
 // 6. Authenticated Participant: Reconcile Payment Status with Razorpay API
 router.post('/:orderId/reconcile', protect, paymentMutationLimiter, reconcilePayment);
+
+// 7. Authenticated Buyer: Instant Hackathon Demo / Direct Settlement
+router.post('/demo-settle', protect, paymentMutationLimiter, demoSettlePayment);
 
 module.exports = router;
 

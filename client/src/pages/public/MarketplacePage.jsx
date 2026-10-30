@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import {
   Store,
   Search,
@@ -16,7 +16,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Tractor,
-  ShoppingCart
+  ShoppingCart,
+  MessageSquare,
+  Loader2
 } from 'lucide-react';
 import Breadcrumbs from '../../components/common/Breadcrumbs';
 import Modal from '../../components/common/Modal';
@@ -25,11 +27,14 @@ import OrderRequestModal from '../../components/orders/OrderRequestModal';
 import { ROUTES, categoryPath } from '../../constants/routes';
 import { BUYER_ROLES } from '../../constants/roles';
 import catalogService from '../../services/catalog.service';
+import conversationService from '../../services/conversation.service';
 import { useAuth } from '../../context/AuthContext';
 
 export default function MarketplacePage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [activeOrderModalItem, setActiveOrderModalItem] = useState(null);
+  const [startingChatId, setStartingChatId] = useState(null);
   const [searchParams, setSearchParams] = useSearchParams();
 
   // URL state
@@ -170,6 +175,32 @@ export default function MarketplacePage() {
     setLoading(true);
     setError(null);
     setReloadIndex((prev) => prev + 1);
+  };
+
+  const handleStartChat = async (item) => {
+    if (!user) {
+      navigate(ROUTES.LOGIN);
+      return;
+    }
+
+    if (item.owner?._id === user?._id) {
+      return;
+    }
+
+    try {
+      setStartingChatId(item._id);
+      const res = await conversationService.getOrCreateConversation(item._id);
+      if (res && res.data && res.data._id) {
+        navigate(`${ROUTES.CONVERSATIONS}?id=${res.data._id}`);
+      } else {
+        navigate(ROUTES.CONVERSATIONS);
+      }
+    } catch (err) {
+      console.error('[Marketplace] Start chat error:', err);
+      navigate(ROUTES.CONVERSATIONS);
+    } finally {
+      setStartingChatId(null);
+    }
   };
 
   const hasActiveFilters = queryParam.trim() !== '' || selectedCategory !== 'all' || sortBy !== 'newest';
@@ -389,7 +420,7 @@ export default function MarketplacePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {products.map((item) => {
               const locationText = [
-                item.location?.mandi,
+                item.location?.village || item.location?.mandi,
                 item.location?.district,
                 item.location?.state
               ]
@@ -498,14 +529,36 @@ export default function MarketplacePage() {
 
                     {/* Actions */}
                     <div className="pt-3 border-t border-stone-100 flex flex-col gap-2 mt-2">
-                      <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center justify-between gap-2">
                         <Link
                           to={`/marketplace/${item._id}`}
-                          className="inline-flex items-center gap-1.5 text-xs font-bold text-[#164e3b] hover:text-[#123826] transition-colors"
+                          className="inline-flex items-center gap-1 text-xs font-bold text-[#164e3b] hover:text-[#123826] transition-colors"
                         >
                           <Info className="w-3.5 h-3.5 text-emerald-700" />
                           <span>View Lot Details</span>
                         </Link>
+
+                        {/* WhatsApp / Chat & Bargaining Button for Direct Negotiation */}
+                        {item.owner?._id !== user?._id && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleStartChat(item);
+                            }}
+                            disabled={startingChatId === item._id}
+                            className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white transition-all shadow-2xs hover:shadow-xs disabled:opacity-50"
+                            title="Chat or call farmer to negotiate price deal"
+                          >
+                            {startingChatId === item._id ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <MessageSquare className="w-3.5 h-3.5" />
+                            )}
+                            <span>Chat / Deal</span>
+                          </button>
+                        )}
 
                         {item.category?.slug && (
                           <Link
@@ -670,7 +723,7 @@ export default function MarketplacePage() {
                 <span className="text-stone-500 block mb-0.5">Origin Location</span>
                 <span className="font-bold text-stone-900 truncate">
                   {[
-                    activeItemModal.location?.mandi,
+                    activeItemModal.location?.village || activeItemModal.location?.mandi,
                     activeItemModal.location?.district,
                     activeItemModal.location?.state
                   ]

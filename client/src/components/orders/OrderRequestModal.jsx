@@ -1,8 +1,9 @@
 import { useState, useId } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShoppingCart, AlertCircle, CheckCircle2, Info, Loader2, MapPin } from 'lucide-react';
+import { ShoppingCart, AlertCircle, CheckCircle2, Info, Loader2, MapPin, MessageSquare } from 'lucide-react';
 import Modal from '../common/Modal';
 import orderService from '../../services/order.service';
+import conversationService from '../../services/conversation.service';
 import { ROUTES } from '../../constants/routes';
 
 export default function OrderRequestModal({ product, isOpen, onClose, onSuccess }) {
@@ -65,6 +66,25 @@ export default function OrderRequestModal({ product, isOpen, onClose, onSuccess 
   const handleGoToOrders = () => {
     handleClose();
     navigate(ROUTES.BUYER_ORDERS);
+  };
+
+  const handleNegotiateFirst = async () => {
+    try {
+      setSubmitting(true);
+      const res = await conversationService.getOrCreateConversation(product._id);
+      handleClose();
+      if (res && res.data && res.data._id) {
+        navigate(`${ROUTES.CONVERSATIONS}?id=${res.data._id}`);
+      } else {
+        navigate(ROUTES.CONVERSATIONS);
+      }
+    } catch (err) {
+      console.error('[OrderModal] Negotiate redirect error:', err);
+      handleClose();
+      navigate(ROUTES.CONVERSATIONS);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -170,6 +190,25 @@ export default function OrderRequestModal({ product, isOpen, onClose, onSuccess 
                 Stock: {product.quantity} {product.unit}
               </span>
             </div>
+          </div>
+
+          {/* Direct Negotiation Callout */}
+          <div className="p-3 rounded-xl bg-emerald-50/90 border border-emerald-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
+            <div className="flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 text-emerald-700 shrink-0" />
+              <div>
+                <span className="font-bold text-emerald-950 block">Want to negotiate rate with farmer?</span>
+                <span className="text-[11px] text-emerald-800">Discuss price directly via chat or call before requesting.</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleNegotiateFirst}
+              disabled={submitting}
+              className="px-3 py-1.5 rounded-lg bg-[#164e3b] hover:bg-[#123826] text-white font-bold text-xs inline-flex items-center justify-center gap-1 shrink-0 transition-colors shadow-2xs"
+            >
+              <span>Chat & Negotiate Deal</span>
+            </button>
           </div>
 
           {/* Form Error Banner */}

@@ -1,3 +1,4 @@
+// AgriFair Main Server Instance - Razorpay Gateway Active
 const http = require('http');
 const app = require('./app');
 const config = require('./config/env');
@@ -20,6 +21,11 @@ const startServer = async () => {
     });
 
     server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        console.error(`[Server Error] Port ${config.port} is already in use. Please kill the existing process and restart.`);
+        console.error(`  Run this command to free the port: lsof -ti :${config.port} | xargs kill -9`);
+        process.exit(1);
+      }
       console.error(`[Server Error] ${err.message}`);
     });
 

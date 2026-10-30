@@ -75,6 +75,14 @@ const paymentService = {
   async reconcilePayment(orderId) {
     const response = await api.post(`/payments/${orderId}/reconcile`);
     return response.data;
+  },
+
+  /**
+   * Instant Hackathon Test Mode / Direct settlement
+   */
+  async demoSettle(orderId, paymentMethod = 'Razorpay (Test / Demo Mode)') {
+    const response = await api.post('/payments/demo-settle', { orderId, paymentMethod });
+    return response.data;
   }
 };
 

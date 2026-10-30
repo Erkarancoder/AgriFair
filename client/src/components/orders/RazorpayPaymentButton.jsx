@@ -167,10 +167,10 @@ export default function RazorpayPaymentButton({
       if (!config || !config.configured) {
         setLoading(false);
         setModalInfo({
-          title: 'Razorpay Gateway Not Configured',
+          title: 'Razorpay Gateway Configuration',
           message:
-            'Razorpay API keys (RAZORPAY_KEY_ID & RAZORPAY_KEY_SECRET) have not been configured on this server yet. You can continue with Direct Mandi / Bank Settlement or set up Razorpay test keys in server/.env.',
-          isError: false
+            'Razorpay payment gateway credentials are not configured. Please check RAZORPAY_KEY_ID & RAZORPAY_KEY_SECRET in server/.env.',
+          isError: true
         });
         setInfoModalOpen(true);
         return;
@@ -257,16 +257,7 @@ export default function RazorpayPaymentButton({
       razorpayInstance.open();
     } catch (err) {
       setLoading(false);
-      if (err.data?.code === 'GATEWAY_NOT_CONFIGURED') {
-        setModalInfo({
-          title: 'Gateway Setup Required',
-          message: err.message,
-          isError: false
-        });
-        setInfoModalOpen(true);
-      } else {
-        setErrorMessage(err.message || 'Failed to initiate payment.');
-      }
+      setErrorMessage(err.message || 'Failed to initiate payment.');
     }
   };
 
@@ -334,7 +325,7 @@ export default function RazorpayPaymentButton({
                 onClick={() => setInfoModalOpen(false)}
                 className="px-4 py-2 rounded-xl bg-[#164e3b] text-white text-xs font-bold hover:bg-[#123826] transition-colors"
               >
-                Understood
+                Close
               </button>
             </div>
           </div>

@@ -42,8 +42,10 @@ const INITIAL_FORM = {
   price: '',
   quantity: '',
   unit: 'quintal',
+  pincode: '',
   state: '',
   district: '',
+  village: '',
   mandi: '',
   status: 'active'
 };
@@ -69,6 +71,9 @@ export default function FarmerListingsPage() {
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
   const [successBanner, setSuccessBanner] = useState('');
+  const [fetchingLocation, setFetchingLocation] = useState(false);
+  const [villageOptions, setVillageOptions] = useState([]);
+  const [locationSuccessNote, setLocationSuccessNote] = useState('');
 
   // Image Upload state
   const [selectedImageFile, setSelectedImageFile] = useState(null);
@@ -158,6 +163,8 @@ export default function FarmerListingsPage() {
     setUploadProgress(0);
     setExistingImageAssets([]);
     setExistingImages([]);
+    setVillageOptions([]);
+    setLocationSuccessNote('');
     setFormError('');
     setIsFormOpen(true);
   };
@@ -175,15 +182,19 @@ export default function FarmerListingsPage() {
       price: prod.price ? String(prod.price) : '',
       quantity: prod.quantity !== undefined ? String(prod.quantity) : '',
       unit: prod.unit || 'quintal',
+      pincode: prod.location?.pincode || '',
       state: prod.location?.state || '',
       district: prod.location?.district || '',
-      mandi: prod.location?.mandi || '',
+      village: prod.location?.village || prod.location?.mandi || '',
+      mandi: prod.location?.village || prod.location?.mandi || '',
       status: prod.status || 'active'
     });
 
     setSelectedImageFile(null);
     setImageUploadError('');
     setUploadProgress(0);
+    setVillageOptions([]);
+    setLocationSuccessNote(prod.location?.pincode ? `✓ Location: ${prod.location.state}` : '');
 
     const existingAssets = Array.isArray(prod.imageAssets) ? prod.imageAssets : [];
     const existingImgs = Array.isArray(prod.images) ? prod.images : [];
@@ -245,6 +256,36 @@ export default function FarmerListingsPage() {
   const handleFormChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // PIN Code change handler with automatic real-time location fetch
+  const handlePincodeChange = async (e) => {
+    const rawVal = e.target.value.replace(/\D/g, '').slice(0, 6);
+    setFormData((prev) => ({ ...prev, pincode: rawVal }));
+    setLocationSuccessNote('');
+
+    if (rawVal.length === 6) {
+      try {
+        setFetchingLocation(true);
+        const res = await catalogService.lookupPincode(rawVal);
+        if (res && res.success && res.data) {
+          const { state, district, villages, defaultVillage } = res.data;
+          setVillageOptions(villages || []);
+          setFormData((prev) => ({
+            ...prev,
+            state: state || prev.state,
+            district: district || prev.district,
+            village: defaultVillage || prev.village || villages?.[0] || '',
+            mandi: defaultVillage || prev.mandi || villages?.[0] || ''
+          }));
+          setLocationSuccessNote(`✓ Auto-detected: ${district}, ${state}`);
+        }
+      } catch (err) {
+        console.warn('Pincode lookup error:', err.message);
+      } finally {
+        setFetchingLocation(false);
+      }
+    }
   };
 
 
@@ -328,7 +369,9 @@ export default function FarmerListingsPage() {
         location: {
           state: formData.state.trim(),
           district: formData.district.trim(),
-          mandi: formData.mandi.trim()
+          village: (formData.village || formData.mandi || '').trim(),
+          pincode: (formData.pincode || '').trim(),
+          mandi: (formData.village || formData.mandi || '').trim()
         },
         status: formData.status,
         images: finalImages,
@@ -592,7 +635,7 @@ export default function FarmerListingsPage() {
         <div className="space-y-4">
           {products.map((item) => {
             const locationText = [
-              item.location?.mandi,
+              item.location?.village || item.location?.mandi,
               item.location?.district,
               item.location?.state
             ]
@@ -869,49 +912,106 @@ export default function FarmerListingsPage() {
               </div>
             </div>
 
-            {/* Location: State, District, Mandi */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-                  State *
-                </label>
-                <input
-                  type="text"
-                  name="state"
-                  value={formData.state}
-                  onChange={handleFormChange}
-                  placeholder="e.g. Punjab"
-                  required
-                  className="w-full px-3.5 py-2.5 text-sm bg-stone-50 border border-stone-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700"
-                />
+            {/* Real Location Section: PIN Code with Auto-fetch & Village Replacement */}
+            <div className="p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-200/80 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-emerald-950 uppercase tracking-wider flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>Farm Location & PIN Code</span>
+                </span>
+                {fetchingLocation && (
+                  <span className="text-[11px] font-semibold text-emerald-800 flex items-center gap-1">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    <span>Auto-fetching location...</span>
+                  </span>
+                )}
+                {locationSuccessNote && !fetchingLocation && (
+                  <span className="text-[11px] font-bold text-emerald-700 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                    <span>{locationSuccessNote}</span>
+                  </span>
+                )}
               </div>
 
+              {/* PIN Code Field */}
               <div>
                 <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-                  District
+                  Postal PIN Code (6-Digit) * <span className="text-stone-500 font-normal normal-case">(Type PIN code to auto-detect location)</span>
                 </label>
-                <input
-                  type="text"
-                  name="district"
-                  value={formData.district}
-                  onChange={handleFormChange}
-                  placeholder="e.g. Ludhiana"
-                  className="w-full px-3.5 py-2.5 text-sm bg-stone-50 border border-stone-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    name="pincode"
+                    value={formData.pincode}
+                    onChange={handlePincodeChange}
+                    maxLength={6}
+                    placeholder="Enter 6-digit PIN code (e.g. 226001, 141401)"
+                    className="w-full px-3.5 py-2.5 text-sm bg-white border border-stone-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-700 font-mono tracking-wider font-semibold text-stone-900"
+                  />
+                  {fetchingLocation ? (
+                    <Loader2 className="w-4 h-4 text-emerald-700 animate-spin absolute right-3.5 top-1/2 -translate-y-1/2" />
+                  ) : formData.pincode?.length === 6 ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 absolute right-3.5 top-1/2 -translate-y-1/2" />
+                  ) : null}
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-                  Mandi / APMC
-                </label>
-                <input
-                  type="text"
-                  name="mandi"
-                  value={formData.mandi}
-                  onChange={handleFormChange}
-                  placeholder="e.g. Khanna Mandi"
-                  className="w-full px-3.5 py-2.5 text-sm bg-stone-50 border border-stone-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700"
-                />
+              {/* State, District, Village (Mandi replaced by Village / Local Area) */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+                    State *
+                  </label>
+                  <input
+                    type="text"
+                    name="state"
+                    value={formData.state}
+                    onChange={handleFormChange}
+                    placeholder="e.g. Punjab"
+                    required
+                    className="w-full px-3.5 py-2.5 text-sm bg-white border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-700 font-medium text-stone-900"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+                    District
+                  </label>
+                  <input
+                    type="text"
+                    name="district"
+                    value={formData.district}
+                    onChange={handleFormChange}
+                    placeholder="e.g. Ludhiana"
+                    className="w-full px-3.5 py-2.5 text-sm bg-white border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-700 font-medium text-stone-900"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+                    Village / Local Area *
+                  </label>
+                  <input
+                    type="text"
+                    name="village"
+                    list="village-suggestions"
+                    value={formData.village}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setFormData((prev) => ({ ...prev, village: val, mandi: val }));
+                    }}
+                    placeholder="e.g. Khanna / Canal Colony"
+                    required
+                    className="w-full px-3.5 py-2.5 text-sm bg-white border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-700 font-medium text-stone-900"
+                  />
+                  {villageOptions.length > 0 && (
+                    <datalist id="village-suggestions">
+                      {villageOptions.map((v, idx) => (
+                        <option key={idx} value={v} />
+                      ))}
+                    </datalist>
+                  )}
+                </div>
               </div>
             </div>
 

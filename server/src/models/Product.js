@@ -86,6 +86,16 @@ const productSchema = new mongoose.Schema(
         trim: true,
         default: ''
       },
+      village: {
+        type: String,
+        trim: true,
+        default: ''
+      },
+      pincode: {
+        type: String,
+        trim: true,
+        default: ''
+      },
       mandi: {
         type: String,
         trim: true,

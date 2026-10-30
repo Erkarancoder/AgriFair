@@ -3,6 +3,7 @@ const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
 const { Product } = require('../models/Product');
 const { getIO } = require('../socket');
+const notificationService = require('../services/notification.service');
 
 /**
  * GET /api/conversations
@@ -17,8 +18,8 @@ const getConversations = async (req, res, next) => {
     })
       .sort({ updatedAt: -1 })
       .populate('product', 'name price currency quantity unit location images status minOrderQuantity variety qualityGrade')
-      .populate('buyer', 'name role email')
-      .populate('farmer', 'name role email allowDirectCalls')
+      .populate('buyer', 'name role email phone')
+      .populate('farmer', 'name role email phone allowDirectCalls')
       .populate('activeOffer')
       .lean();
 
@@ -82,8 +83,8 @@ const getOrCreateConversation = async (req, res, next) => {
 
     const populated = await Conversation.findById(conversation._id)
       .populate('product', 'name price currency quantity unit location images status minOrderQuantity variety qualityGrade')
-      .populate('buyer', 'name role email')
-      .populate('farmer', 'name role email allowDirectCalls')
+      .populate('buyer', 'name role email phone')
+      .populate('farmer', 'name role email phone allowDirectCalls')
       .populate('activeOffer')
       .lean();
 
@@ -245,6 +246,19 @@ const sendMessage = async (req, res, next) => {
       });
     }
 
+    // Persist real-time notification to the other party
+    notificationService
+      .createNotification({
+        recipient: recipientId,
+        type: 'negotiation',
+        title: `Message from ${req.user.name}`,
+        message: text.trim().slice(0, 150) || 'Sent a trade update',
+        entityId: conversation._id,
+        entityType: 'Conversation',
+        link: `/conversations?id=${conversation._id}`
+      })
+      .catch((err) => console.warn('[Message Notif Warn]:', err.message));
+
     return res.status(201).json({
       success: true,
       data: populatedMessage
@@ -313,6 +327,19 @@ const requestCall = async (req, res, next) => {
         senderName: req.user.name
       });
     }
+
+    // Persist real-time call request notification to recipient
+    notificationService
+      .createNotification({
+        recipient: recipientId,
+        type: 'negotiation',
+        title: `📞 Call Request from ${req.user.name}`,
+        message: `${req.user.name} requested a phone call discussion regarding ${productName}.`,
+        entityId: conversation._id,
+        entityType: 'Conversation',
+        link: `/conversations?id=${conversation._id}`
+      })
+      .catch((err) => console.warn('[Call Notif Warn]:', err.message));
 
     return res.status(200).json({
       success: true,
