@@ -96,6 +96,24 @@ export default function AgriFairAssistant() {
       if (!isOpen) {
         setUnreadBadge(true);
       }
+
+      // Voice read-out for bot response
+      if (data?.reply) {
+        const cleanReply = data.reply
+          .replace(/\*\*/g, '')
+          .replace(/\[(.*?)\]\(.*?\)/g, '$1')
+          .split('\n')[0]
+          .slice(0, 180);
+        window.dispatchEvent(
+          new CustomEvent('agrifair:voice_speak', {
+            detail: {
+              hindiText: cleanReply,
+              romanText: cleanReply,
+              key: `bot-reply-${Date.now()}`
+            }
+          })
+        );
+      }
     } catch (err) {
       const errorMessage = {
         id: `bot-err-${Date.now()}`,

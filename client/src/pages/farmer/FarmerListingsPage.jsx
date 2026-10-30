@@ -279,6 +279,15 @@ export default function FarmerListingsPage() {
             mandi: defaultVillage || prev.mandi || villages?.[0] || ''
           }));
           setLocationSuccessNote(`✓ Auto-detected: ${district}, ${state}`);
+          window.dispatchEvent(
+            new CustomEvent('agrifair:voice_speak', {
+              detail: {
+                hindiText: `पिन कोड पहचान लिया गया है। राज्य ${state} और जिला ${district} अपने आप भर गया है। अब नीचे अपना गाँव चुन लें।`,
+                romanText: `Pincode auto-detected: ${district}, ${state}. Ab apna gaon chunein.`,
+                key: `pincode-detected-${rawVal}`
+              }
+            })
+          );
         }
       } catch (err) {
         console.warn('Pincode lookup error:', err.message);

@@ -288,6 +288,16 @@ export default function MandiRateModal({ isOpen, onClose }) {
     setSearchTerm(queryToSearch);
     setSelectedMandi(null);
     fetchMandis(queryToSearch);
+
+    window.dispatchEvent(
+      new CustomEvent('agrifair:voice_speak', {
+        detail: {
+          hindiText: `${sug.name || sug.district || sug.state || queryToSearch} का मंडी भाव नीचे आ गया है।`,
+          romanText: `${sug.name || sug.district || sug.state || queryToSearch} ka mandi bhav aa gaya hai.`,
+          key: `mandi-sug-${(sug.name || sug.district || sug.state || queryToSearch).toLowerCase()}`
+        }
+      })
+    );
   };
 
   // Keyboard navigation inside input / dropdown
@@ -332,6 +342,17 @@ export default function MandiRateModal({ isOpen, onClose }) {
     setShowSuggestions(false);
     setSelectedMandi(null);
     fetchMandis(searchTerm);
+    if (searchTerm.trim()) {
+      window.dispatchEvent(
+        new CustomEvent('agrifair:voice_speak', {
+          detail: {
+            hindiText: `${searchTerm} के लिए मंडी भाव की सूची नीचे आ गई है। अपनी नजदीकी मंडी पर क्लिक करके पूरा भाव देखें।`,
+            romanText: `${searchTerm} ke liye mandi bhav aa gaya hai. Niche click karke bhav dekhein.`,
+            key: `mandi-search-${searchTerm.toLowerCase().trim()}`
+          }
+        })
+      );
+    }
   };
 
   const handleQuickHubClick = (city) => {
@@ -339,6 +360,15 @@ export default function MandiRateModal({ isOpen, onClose }) {
     setShowSuggestions(false);
     setSelectedMandi(null);
     fetchMandis(city);
+    window.dispatchEvent(
+      new CustomEvent('agrifair:voice_speak', {
+        detail: {
+          hindiText: `${city} मंडी का आज का ताज़ा सरकारी और आवक भाव नीचे आ गया है। इसे देखकर आप अपनी फसल का सही दाम तय कर सकते हैं।`,
+          romanText: `${city} mandi ka taaza bhav niche aa gaya hai. Isse dekh kar sahi daam tay karein.`,
+          key: `mandi-city-${city.toLowerCase()}`
+        }
+      })
+    );
   };
 
   // Clear search and reset results
