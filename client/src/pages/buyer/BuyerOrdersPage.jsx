@@ -23,6 +23,7 @@ import Breadcrumbs from '../../components/common/Breadcrumbs';
 import EmptyState from '../../components/common/EmptyState';
 import Modal from '../../components/common/Modal';
 import OrderTrackingTimeline from '../../components/orders/OrderTrackingTimeline';
+import LiveMapTrackingModal from '../../components/orders/LiveMapTrackingModal';
 import RazorpayPaymentButton from '../../components/orders/RazorpayPaymentButton';
 import { STATUS_CONFIG } from '../../constants/orderStatuses';
 import { ROUTES } from '../../constants/routes';
@@ -40,6 +41,7 @@ export default function BuyerOrdersPage() {
   const [confirmingDeliveryId, setConfirmingDeliveryId] = useState(null);
   const [actionError, setActionError] = useState(null);
   const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
+  const [liveMapOrder, setLiveMapOrder] = useState(null);
 
   const fetchOrders = useCallback(() => {
     setLoading(true);
@@ -423,15 +425,28 @@ export default function BuyerOrdersPage() {
                   </div>
 
                   {/* Card Actions Footer */}
-                  <div className="px-5 py-3 border-t border-stone-100 bg-[#faf9f5]/50 flex items-center justify-between gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedOrderDetails(order)}
-                      className="text-xs font-bold text-[#164e3b] hover:text-[#123826] flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100/80 px-3 py-1.5 rounded-xl border border-emerald-200/80 transition-colors shadow-2xs"
-                    >
-                      <Truck className="w-3.5 h-3.5 text-emerald-700" />
-                      <span>Track Consignment</span>
-                    </button>
+                  <div className="px-5 py-3 border-t border-stone-100 bg-[#faf9f5]/50 flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedOrderDetails(order)}
+                        className="text-xs font-bold text-[#164e3b] hover:text-[#123826] flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100/80 px-2.5 py-1.5 rounded-xl border border-emerald-200/80 transition-colors shadow-2xs"
+                      >
+                        <Truck className="w-3.5 h-3.5 text-emerald-700" />
+                        <span>Track Consignment</span>
+                      </button>
+
+                      {/* Live GPS Map Tracking Button */}
+                      <button
+                        type="button"
+                        onClick={() => setLiveMapOrder(order)}
+                        className="text-xs font-bold text-blue-800 hover:text-blue-950 flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 px-2.5 py-1.5 rounded-xl border border-blue-200 transition-all shadow-2xs hover:shadow-xs group"
+                        title="Open Live GPS Map Tracking"
+                      >
+                        <Navigation className="w-3.5 h-3.5 text-blue-600 group-hover:scale-110 transition-transform" />
+                        <span>Live Map Track</span>
+                      </button>
+                    </div>
 
                     <div className="flex items-center gap-2">
                       {(order.status === 'out_for_delivery' || order.status === 'shipped') && (
@@ -511,6 +526,14 @@ export default function BuyerOrdersPage() {
             onClose={() => setSelectedOrderDetails(null)}
           />
         </Modal>
+      )}
+
+      {/* Live GPS Map Tracking Modal */}
+      {liveMapOrder && (
+        <LiveMapTrackingModal
+          order={liveMapOrder}
+          onClose={() => setLiveMapOrder(null)}
+        />
       )}
     </div>
   );

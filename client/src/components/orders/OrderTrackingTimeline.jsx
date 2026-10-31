@@ -20,12 +20,14 @@ import {
 } from 'lucide-react';
 import orderService from '../../services/order.service';
 import { DELIVERY_STAGES, STATUS_CONFIG } from '../../constants/orderStatuses';
+import LiveMapTrackingModal from './LiveMapTrackingModal';
 
 export default function OrderTrackingTimeline({ orderId, initialOrder, onClose }) {
   const [order, setOrder] = useState(initialOrder || null);
   const [loading, setLoading] = useState(!initialOrder && Boolean(orderId));
   const [error, setError] = useState(null);
   const [copiedId, setCopiedId] = useState(false);
+  const [showLiveMap, setShowLiveMap] = useState(false);
 
   const fetchTracking = useCallback(async () => {
     const targetId = orderId || initialOrder?._id;
@@ -174,7 +176,17 @@ export default function OrderTrackingTimeline({ orderId, initialOrder, onClose }
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setShowLiveMap(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 transition-colors shadow-2xs group"
+              title="Open Full GPS Road Map"
+            >
+              <Navigation className="w-3.5 h-3.5 text-blue-600 group-hover:scale-110 transition-transform" />
+              <span>Live GPS Map</span>
+            </button>
+
             <span
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-extrabold uppercase tracking-wider border ${statusCfg.badgeClass}`}
             >
@@ -525,6 +537,14 @@ export default function OrderTrackingTimeline({ orderId, initialOrder, onClose }
             Close Tracking
           </button>
         </div>
+      )}
+
+      {/* Live Map Modal */}
+      {showLiveMap && (
+        <LiveMapTrackingModal
+          order={order}
+          onClose={() => setShowLiveMap(false)}
+        />
       )}
     </div>
   );

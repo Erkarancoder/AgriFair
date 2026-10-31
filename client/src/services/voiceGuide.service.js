@@ -546,7 +546,17 @@ class VoiceGuideService {
       return;
     }
 
-    // 27. Track Consignment
+    // 27. Live Map Track
+    if (text.includes('live map track') || text.includes('map track') || text.includes('gps map')) {
+      this.speak({
+        hindiText: 'लाइव जीपीएस मैप ट्रैकिंग खुल गई है। यहाँ आप अपनी फसल की गाड़ी को सड़क पर चलते हुए देख सकते हैं। कुल दूरी और पहुँचने का समय नीचे दिया गया है।',
+        romanText: 'Live GPS Map tracking khul gayi hai. Yahan gaadi aur pahunchne ka samay dekh sakte hain.',
+        key: 'action-live-map-track'
+      });
+      return;
+    }
+
+    // 28. Track Consignment
     if (text.includes('track consignment') || text.includes('tracking')) {
       this.speak({
         hindiText: 'यहाँ से देखें कि आपकी फसल की गाड़ी कहाँ तक पहुँची है और डिलीवरी का क्या स्टेटस है।',
