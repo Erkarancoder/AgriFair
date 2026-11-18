@@ -1,0 +1,21 @@
+Feature_Name,Role,Used_In_Model,Reason
+Soil_Type,Input Feature,Yes,Type of soil
+Soil_pH,Other Dataset Column,No,Not used by the current six-feature model
+Soil_Moisture,Input Feature,Yes,Soil moisture measurement
+Organic_Carbon,Other Dataset Column,No,Not used by the current six-feature model
+Electrical_Conductivity,Other Dataset Column,No,Not used by the current six-feature model
+Temperature_C,Input Feature,Yes,Temperature in Celsius
+Humidity,Input Feature,Yes,Relative humidity
+Rainfall_mm,Other Dataset Column,No,Not used by the current six-feature model
+Sunlight_Hours,Other Dataset Column,No,Not used by the current six-feature model
+Wind_Speed_kmh,Other Dataset Column,No,Not used by the current six-feature model
+Crop_Type,Input Feature,Yes,Type of crop being cultivated
+Crop_Growth_Stage,Input Feature,Yes,Current growth stage of the crop
+Season,Other Dataset Column,No,Not used by the current six-feature model
+Irrigation_Type,Other Dataset Column,No,Not used by the current six-feature model
+Water_Source,Other Dataset Column,No,Not used by the current six-feature model
+Field_Area_hectare,Other Dataset Column,No,Not used by the current six-feature model
+Mulching_Used,Other Dataset Column,No,Not used by the current six-feature model
+Previous_Irrigation_mm,Other Dataset Column,No,Not used by the current six-feature model
+Region,Other Dataset Column,No,Not used by the current six-feature model
+Irrigation_Need,Target,Yes,Target label predicted by the model

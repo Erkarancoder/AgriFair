@@ -1,0 +1,29 @@
+
+# Python virtual environment
+.venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Test cache
+.pytest_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Environment variables and secrets
+.env
+.env.*
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Local generated model artifacts
+# Uncomment if model files should stay local and not be distributed
+# models/*.joblib
+
+# OS/editor files
+.DS_Store
+Thumbs.db

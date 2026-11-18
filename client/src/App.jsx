@@ -3,12 +3,14 @@ import { AuthProvider } from './context/AuthContext';
 import AppRoutes from './routes';
 import AgriFairAssistant from './components/assistant/AgriFairAssistant';
 import VoiceGuideHUD from './components/assistant/VoiceGuideHUD';
+import RouteVoiceAnnouncer from './components/assistant/RouteVoiceAnnouncer';
 
 export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <AppRoutes />
+        <RouteVoiceAnnouncer />
         <VoiceGuideHUD />
         <AgriFairAssistant />
       </AuthProvider>

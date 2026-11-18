@@ -1,5 +1,5 @@
-// Smart AI Voice Guide Service for AgriFair (AgriFair Bolta Sahayak / Kisan Voice Guide)
-// Designed for farmers who prefer audio guidance in simple, respectful Hindi.
+// AgriFair Kisan Bolta Sahayak - Voice Guide Service
+// Saaf aur simple Hindi mein farmer ko har chiz samjhata hai.
 
 class VoiceGuideService {
   constructor() {
@@ -11,9 +11,7 @@ class VoiceGuideService {
     this.lastSpokenKey = '';
     this.lastSpokenTime = 0;
     this.lastSpokenText = '';
-    this.lastSpokenRoman = '';
     this.currentText = '';
-    this.currentRoman = '';
     this.subscribers = new Set();
     this.hasUserInteracted = false;
     this.initialized = false;
@@ -27,49 +25,43 @@ class VoiceGuideService {
     if (this.initialized) return;
     this.initialized = true;
 
-    // Load available voices
     this.loadVoices();
     if (this.synth && this.synth.onvoiceschanged !== undefined) {
       this.synth.onvoiceschanged = () => this.loadVoices();
     }
 
-    // Attach global listeners for click and focus across the entire application
+    // Mark user interaction (needed for autoplay policy)
     const markInteracted = () => {
       this.hasUserInteracted = true;
-      window.removeEventListener('click', markInteracted);
-      window.removeEventListener('keydown', markInteracted);
     };
     window.addEventListener('click', markInteracted, { once: true });
     window.addEventListener('keydown', markInteracted, { once: true });
 
-    // Global focusin listener (for inputs, selects, textareas)
+    // Listen for focus on form fields
     document.addEventListener('focusin', (e) => {
-      this.handleElementEvent(e.target, 'focus');
+      this.handleElement(e.target);
     }, true);
 
-    // Global click listener (for buttons, links, cards)
+    // Listen for clicks on buttons, links, cards
     document.addEventListener('click', (e) => {
-      const clickable = e.target.closest('button, a, [role="button"], input[type="radio"], input[type="checkbox"], [data-voice-guide]');
-      if (clickable) {
-        this.handleElementEvent(clickable, 'click');
-      }
+      const el = e.target.closest('button, a, [role="button"], select, label, [data-voice]');
+      if (el) this.handleElement(el);
     }, true);
 
-    // Custom event listener for components to trigger dynamic voice messages
+    // Custom event from anywhere in app
     window.addEventListener('agrifair:voice_speak', (e) => {
-      if (e.detail) {
-        this.speak(e.detail);
-      }
+      if (e.detail) this.speak(e.detail);
     });
   }
 
   loadVoices() {
     if (!this.synth) return;
     this.voices = this.synth.getVoices() || [];
-    // Prioritize high-quality Hindi voices, then Indian English, then system default
+    // Best Hindi voice first, then Indian English, then any
     this.selectedVoice =
-      this.voices.find((v) => v.lang === 'hi-IN' || v.lang.startsWith('hi')) ||
-      this.voices.find((v) => v.lang === 'en-IN' || v.name.includes('India')) ||
+      this.voices.find((v) => v.lang === 'hi-IN') ||
+      this.voices.find((v) => v.lang.startsWith('hi')) ||
+      this.voices.find((v) => v.lang === 'en-IN') ||
       this.voices[0] ||
       null;
   }
@@ -82,13 +74,7 @@ class VoiceGuideService {
 
   notify() {
     const state = this.getState();
-    this.subscribers.forEach((cb) => {
-      try {
-        cb(state);
-      } catch (err) {
-        console.error('Voice guide subscriber error:', err);
-      }
-    });
+    this.subscribers.forEach((cb) => { try { cb(state); } catch {} });
   }
 
   getState() {
@@ -96,10 +82,8 @@ class VoiceGuideService {
       isSpeaking: this.isSpeaking,
       isMuted: this.isMuted,
       currentText: this.currentText,
-      currentRoman: this.currentRoman,
       lastSpokenText: this.lastSpokenText,
-      lastSpokenRoman: this.lastSpokenRoman,
-      hasUserInteracted: this.hasUserInteracted
+      hasUserInteracted: this.hasUserInteracted,
     };
   }
 
@@ -108,495 +92,335 @@ class VoiceGuideService {
     if (typeof window !== 'undefined') {
       localStorage.setItem('agrifair_voice_muted', this.isMuted ? 'true' : 'false');
     }
-    if (this.isMuted) {
-      this.stop();
-    }
+    if (this.isMuted) this.stop();
     this.notify();
     return !this.isMuted;
   }
 
   stop() {
-    if (this.synth) {
-      this.synth.cancel();
-    }
+    if (this.synth) this.synth.cancel();
     this.isSpeaking = false;
     this.notify();
   }
 
   replay() {
     if (!this.lastSpokenText) return;
-    this.speak({
-      hindiText: this.lastSpokenText,
-      romanText: this.lastSpokenRoman,
-      key: this.lastSpokenKey,
-      force: true
-    });
+    this.speak({ hindiText: this.lastSpokenText, key: this.lastSpokenKey, force: true });
+  }
+
+  // Clean text — remove characters that cause garbled speech
+  cleanText(text) {
+    return text
+      .replace(/—/g, ' ')
+      .replace(/–/g, ' ')
+      .replace(/\(/g, ' ')
+      .replace(/\)/g, ' ')
+      .replace(/["""]/g, ' ')
+      .replace(/\|/g, ' ')
+      .replace(/\//g, ' ')
+      .replace(/&/g, ' aur ')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 
   speak({ hindiText, romanText = '', key = '', force = false }) {
     if (!hindiText) return;
 
-    // "ye nahi ki bar bar bolega, ek bar hi bolega" rule:
-    // If exact same element/action happened in the last 15 seconds, skip duplicate speech unless forced (e.g. Replay button)
     const now = Date.now();
-    if (!force && key && key === this.lastSpokenKey && now - this.lastSpokenTime < 15000) {
-      return;
-    }
+    // Same key within 12 seconds — skip (ek baar hi bolega rule)
+    if (!force && key && key === this.lastSpokenKey && now - this.lastSpokenTime < 12000) return;
+
+    const cleaned = this.cleanText(hindiText);
 
     this.lastSpokenKey = key;
     this.lastSpokenTime = now;
-    this.lastSpokenText = hindiText;
-    this.lastSpokenRoman = romanText;
-    this.currentText = hindiText;
-    this.currentRoman = romanText;
+    this.lastSpokenText = cleaned;
+    this.currentText = cleaned;
 
-    if (this.isMuted) {
-      this.notify();
-      return;
-    }
+    this.notify();
 
-    if (!this.synth) {
-      this.notify();
-      return;
-    }
+    if (this.isMuted || !this.synth) return;
 
     try {
-      this.synth.cancel(); // Stop prior sentence immediately
+      this.synth.cancel();
 
-      const utterance = new SpeechSynthesisUtterance(hindiText);
+      const utterance = new SpeechSynthesisUtterance(cleaned);
       utterance.lang = 'hi-IN';
-      utterance.rate = 0.92; // Natural, polite, relaxed pace for farmers
-      utterance.pitch = 1.0;
+      utterance.rate = 0.85;   // Thoda slow — farmer clearly samjhe
+      utterance.pitch = 1.05;  // Thoda upar — clear lagti hai
+      utterance.volume = 1.0;
 
-      if (this.selectedVoice) {
-        utterance.voice = this.selectedVoice;
-      }
+      if (this.selectedVoice) utterance.voice = this.selectedVoice;
 
-      utterance.onstart = () => {
-        this.isSpeaking = true;
-        this.notify();
-      };
-
-      utterance.onend = () => {
-        this.isSpeaking = false;
-        this.notify();
-      };
-
-      utterance.onerror = (e) => {
-        this.isSpeaking = false;
-        this.notify();
-      };
+      utterance.onstart = () => { this.isSpeaking = true; this.notify(); };
+      utterance.onend = () => { this.isSpeaking = false; this.notify(); };
+      utterance.onerror = () => { this.isSpeaking = false; this.notify(); };
 
       this.synth.speak(utterance);
-    } catch (err) {
-      console.warn('VoiceGuide speak error:', err);
+    } catch {
       this.isSpeaking = false;
       this.notify();
     }
   }
 
-  // Smart interpreter for any element clicked or focused
-  handleElementEvent(el, eventType) {
+  // ─── Main handler: figure out what was clicked/focused ───────────────────────
+  handleElement(el) {
     if (!el || typeof el.getAttribute !== 'function') return;
 
-    // Check explicit voice guide attribute first
-    const explicitGuide = el.getAttribute('data-voice-guide');
-    if (explicitGuide) {
-      this.speak({
-        hindiText: explicitGuide,
-        romanText: el.getAttribute('data-voice-roman') || '',
-        key: `custom-${explicitGuide.slice(0, 20)}`
-      });
+    // data-voice attribute — highest priority
+    const custom = el.getAttribute('data-voice');
+    if (custom) {
+      this.speak({ hindiText: custom, key: 'custom-' + custom.slice(0, 15) });
       return;
     }
 
-    const tagName = el.tagName.toLowerCase();
-    const name = (el.name || '').toLowerCase();
+    const tag = el.tagName.toLowerCase();
+    const name = (el.name || el.getAttribute('name') || '').toLowerCase();
     const id = (el.id || '').toLowerCase();
-    const placeholder = (el.placeholder || '').toLowerCase();
-    const text = (el.innerText || el.textContent || '').trim().toLowerCase();
-    const ariaLabel = (el.getAttribute('aria-label') || '').toLowerCase();
+    const ph = (el.placeholder || '').toLowerCase();
+    const txt = (el.innerText || el.textContent || '').trim().toLowerCase().slice(0, 80);
     const type = (el.type || '').toLowerCase();
+    const ariaLabel = (el.getAttribute('aria-label') || '').toLowerCase();
 
-    // 1. Post New Listing / Sell Crop button
-    if (
-      text.includes('post new produce') ||
-      text.includes('post / manage produce') ||
-      text.includes('sell produce') ||
-      text.includes('fasal bechein') ||
-      text.includes('cell crop') ||
-      ariaLabel.includes('post produce')
-    ) {
-      this.speak({
-        hindiText: 'नमस्ते किसान भाई! यहाँ आप अपनी फसल बेचने के लिए जोड़ सकते हैं। आइए हम आपको स्टेप-बाय-स्टेप बताते हैं कि क्या भरना है।',
-        romanText: 'Namaste kisan bhai! Yahan aap apni fasal bechne ke liye jod sakte hain. Aaiye hum aapko step-by-step batate hain ki kya bharna hai.',
-        key: 'action-sell-produce'
-      });
+    // ── FORM FIELDS ──────────────────────────────────────────────────────────
+
+    // Fasal ka naam
+    if (name === 'title' || name === 'cropname' || id.includes('crop') || ph.includes('sharbati') || ph.includes('crop name')) {
+      this.speak({ hindiText: 'Yahan apni fasal ka naam likhein. Jaise gehun, chawal, chana ya makka.', key: 'f-crop' });
       return;
     }
 
-    // 2. Crop / Produce Name input
-    if (
-      name === 'title' ||
-      name === 'cropname' ||
-      name === 'producename' ||
-      placeholder.includes('sharbati') ||
-      placeholder.includes('crop name') ||
-      id.includes('crop')
-    ) {
-      this.speak({
-        hindiText: 'यहाँ अपनी फसल का नाम लिखें, जैसे शरबती गेहूँ, बासमati चावल, या देसी चना।',
-        romanText: 'Yahan apni fasal ka naam likhein, jaise Sharbati Gehun, Basmati Chawal ya Chana.',
-        key: 'field-crop-name'
-      });
+    // PIN Code
+    if (name === 'pincode' || ph.includes('pin') || ph.includes('226001') || id.includes('pin')) {
+      this.speak({ hindiText: 'Yahan apne gaon ka 6 ank ka pin code dalein. Pin code dalne ke baad aapka rajya, jila aur gaon apne aap aa jayega.', key: 'f-pin' });
       return;
     }
 
-    // 3. Category Select
-    if (name === 'category' || placeholder.includes('category')) {
-      this.speak({
-        hindiText: 'यहाँ फसल की श्रेणी चुनें, जैसे अनाज (Grains), दालें (Pulses), या फल और ताज़ा सब्जियां।',
-        romanText: 'Yahan fasal ki category chunein, jaise Anaj, Daal ya Sabzi.',
-        key: 'field-category'
-      });
+    // Village
+    if (name === 'village' || ph.includes('village') || ph.includes('khanna') || id.includes('village')) {
+      this.speak({ hindiText: 'Yahan apne gaon ka naam chunein. Yeh pin code se apne aap aa jata hai.', key: 'f-village' });
       return;
     }
 
-    // 4. Variety / Cultivar
-    if (name === 'variety' || placeholder.includes('variety') || placeholder.includes('cultivar')) {
-      this.speak({
-        hindiText: 'यहाँ फसल की किस्म या वैरायटी लिखें, जैसे 1121 बासमती या देसी वैरायटी।',
-        romanText: 'Yahan fasal ki variety likhein, jaise 1121 Basmati ya Desi variety.',
-        key: 'field-variety'
-      });
+    // State
+    if (name === 'state' || ph.includes('punjab') || ph.includes('state')) {
+      this.speak({ hindiText: 'Yahan aapka rajya dikhega. Yeh pin code se apne aap bhar jata hai.', key: 'f-state' });
       return;
     }
 
-    // 5. Quality Grade
-    if (name === 'qualitygrade' || placeholder.includes('grade')) {
-      this.speak({
-        hindiText: 'यहाँ फसल की गुणवत्ता या ग्रेड चुनें, जैसे ग्रेड A या बढ़िया माल।',
-        romanText: 'Yahan fasal ka quality grade chunein, jaise Grade A ya FAQ.',
-        key: 'field-grade'
-      });
+    // District
+    if (name === 'district' || ph.includes('ludhiana') || ph.includes('district')) {
+      this.speak({ hindiText: 'Yahan aapka jila dikhega. Yeh pin code se apne aap bhar jata hai.', key: 'f-district' });
       return;
     }
 
-    // 6. Price Per Unit
-    if (
-      name === 'priceperunit' ||
-      name === 'price' ||
-      placeholder.includes('price') ||
-      placeholder.includes('2800')
-    ) {
-      this.speak({
-        hindiText: 'यहाँ अपनी फसल का बिक्री भाव भरें, कि आप 1 क्विंटल का कितना रुपया लेना चाहते हैं।',
-        romanText: 'Yahan apni fasal ka daam bharein, ki 1 quintal ka kitna rupya lena chahte hain.',
-        key: 'field-price'
-      });
+    // Category
+    if (name === 'category' || id.includes('category') || ph.includes('category')) {
+      this.speak({ hindiText: 'Yahan fasal ki shreni chunein. Jaise Anaj, Daal, Phal ya Sabzi.', key: 'f-category' });
       return;
     }
 
-    // 7. Available Quantity
-    if (
-      name === 'totalquantity' ||
-      name === 'quantity' ||
-      placeholder.includes('available quantity') ||
-      placeholder.includes('100')
-    ) {
-      this.speak({
-        hindiText: 'यहाँ लिखें कि आपके पास बेचने के लिए कुल कितने क्विंटल या किलो फसल तैयार है।',
-        romanText: 'Yahan likhein ki aapke paas bechne ke liye kitni fasal taiyar hai.',
-        key: 'field-quantity'
-      });
+    // Variety
+    if (name === 'variety' || ph.includes('variety') || ph.includes('cultivar')) {
+      this.speak({ hindiText: 'Yahan fasal ki variety ya kism likhein. Jaise 1121 Basmati ya Desi.', key: 'f-variety' });
       return;
     }
 
-    // 8. Trade Unit
-    if (name === 'unit') {
-      this.speak({
-        hindiText: 'यहाँ वजन की इकाई चुनें, जैसे क्विंटल (100 किलो) या किलोग्राम।',
-        romanText: 'Yahan wazan ki ikai chunein, jaise Quintal ya KG.',
-        key: 'field-unit'
-      });
+    // Quality Grade
+    if (name === 'qualitygrade' || ph.includes('grade') || id.includes('grade')) {
+      this.speak({ hindiText: 'Yahan fasal ki quality grade chunein. Jaise Grade A ya badhiya maal.', key: 'f-grade' });
       return;
     }
 
-    // 9. PIN Code Input
-    if (
-      name === 'pincode' ||
-      placeholder.includes('pin code') ||
-      placeholder.includes('226001')
-    ) {
-      this.speak({
-        hindiText: 'यहाँ अपने गाँव का 6 अंकों का पिन कोड डालें, आपका राज्य, जिला और गाँव अपने आप आ जाएगा।',
-        romanText: 'Yahan apna 6-digit PIN code dalein, rajya, zila aur gaon apne aap aa jayega.',
-        key: 'field-pincode'
-      });
+    // Price
+    if (name === 'priceperunit' || name === 'price' || ph.includes('2800') || ph.includes('price')) {
+      this.speak({ hindiText: 'Yahan apni fasal ka daam bharein. Matlab 1 quintal ka kitna rupaya lena chahte hain.', key: 'f-price' });
       return;
     }
 
-    // 10. Village / Local Area Input
-    if (
-      name === 'village' ||
-      placeholder.includes('khanna / canal colony') ||
-      placeholder.includes('village')
-    ) {
-      this.speak({
-        hindiText: 'यहाँ अपने गाँव या नजदीकी पोस्ट ऑफिस का नाम चुनें।',
-        romanText: 'Yahan apne gaon ya local area ka naam chunein.',
-        key: 'field-village'
-      });
+    // Quantity
+    if (name === 'totalquantity' || name === 'quantity' || ph.includes('100') || ph.includes('quantity')) {
+      this.speak({ hindiText: 'Yahan likhein ki aapke paas kitne quintal ya kilo fasal bechne ke liye taiyar hai.', key: 'f-qty' });
       return;
     }
 
-    // 11. Description / Moisture
-    if (
-      name === 'description' ||
-      placeholder.includes('moisture') ||
-      placeholder.includes('specifications')
-    ) {
-      this.speak({
-        hindiText: 'यहाँ अपनी फसल की खासियत, जैसे नमी की मात्रा या कटाई की जानकारी लिख सकते हैं।',
-        romanText: 'Yahan fasal ki nami ya khasiyat likh sakte hain.',
-        key: 'field-description'
-      });
+    // Trade Unit / Weight unit
+    if (name === 'unit' || id.includes('unit')) {
+      this.speak({ hindiText: 'Yahan wazan ki ikai chunein. Jaise Quintal jo 100 kilo hota hai, ya Kilogram.', key: 'f-unit' });
       return;
     }
 
-    // 12. Harvest Photo
-    if (type === 'file' || text.includes('harvest photo') || text.includes('select product')) {
-      this.speak({
-        hindiText: 'यहाँ क्लिक करके अपनी कटी हुई फसल की ताज़ा फोटो लगाएं, ताकि खरीदार देखकर भरोसा कर सकें।',
-        romanText: 'Yahan fasal ki taaza photo lagayein, taaki khareedaar dekh sakein.',
-        key: 'field-photo'
-      });
+    // Min Order Qty
+    if (name === 'minorderqty' || ph.includes('min') || id.includes('minorder')) {
+      this.speak({ hindiText: 'Yahan woh kam se kam matra likhein jo ek khareeddaar ko khareedni hogi.', key: 'f-minqty' });
       return;
     }
 
-    // 13. Create Listing Button
-    if (
-      text.includes('create listing') ||
-      text.includes('post listing') ||
-      text.includes('publish produce')
-    ) {
-      this.speak({
-        hindiText: 'बहुत बढ़िया! आपकी फसल एग्रीफेयर बाज़ार में सभी व्यापारियों के लिए जुड़ रही है।',
-        romanText: 'Bahut badhiya! Aapki fasal AgriFair marketplace me jud rahi hai.',
-        key: 'action-create-listing'
-      });
+    // Description / Moisture
+    if (name === 'description' || ph.includes('moisture') || ph.includes('specification')) {
+      this.speak({ hindiText: 'Yahan fasal ki khas baatein likhein. Jaise nami ka percentage, katai ki taareekh ya packaging ka tarika.', key: 'f-desc' });
       return;
     }
 
-    // 14. Mandi Rates / मंडी भाव Button
-    if (
-      text.includes('mandi rates') ||
-      text.includes('मंडी भाव') ||
-      text.includes('mandi rate') ||
-      text.includes('mandi benchmark')
-    ) {
-      this.speak({
-        hindiText: 'मंडी भाव केंद्र खुल गया है। ऊपर सर्च बॉक्स में अपने शहर या मंडी का नाम लिखें, जैसे लखनऊ या गोरखपुर।',
-        romanText: 'Mandi Bhav kendra khul gaya hai. Upar search me apne sheher ka naam likhein, jaise Lucknow ya Gorakhpur.',
-        key: 'action-open-mandi'
-      });
+    // Photo upload
+    if (type === 'file' || txt.includes('harvest photo') || txt.includes('select product') || txt.includes('click to select')) {
+      this.speak({ hindiText: 'Yahan click karke apni fasal ki taaza photo lagaein. Achhi photo hogi to khareedaar jaldi bharosa karega.', key: 'f-photo' });
       return;
     }
 
-    // 15. Mandi Search Input
-    if (
-      id.includes('mandi') ||
-      placeholder.includes('apmc') ||
-      placeholder.includes('mandi') ||
-      placeholder.includes('lucknow')
-    ) {
-      this.speak({
-        hindiText: 'सर्च में अपने नजदीकी शहर, ज़िले या मंडी का नाम लिखें, जैसे लखनऊ, कानपुर या खन्ना।',
-        romanText: 'Search me apne sheher ya mandi ka naam likhein, jaise Lucknow ya Khanna.',
-        key: 'field-mandi-search'
-      });
+    // Listing Status
+    if (name === 'status' || txt.includes('active') || txt.includes('visible in marketplace')) {
+      this.speak({ hindiText: 'Yahan chunein ki aapki fasal listing abhi marketplace mein dikhni chahiye ya nahin.', key: 'f-status' });
       return;
     }
 
-    // 16. Quick Mandi Hubs (e.g. Lucknow, Gorakhpur, Delhi, Pune, etc.)
-    const hubs = ['lucknow', 'gorakhpur', 'delhi', 'pune', 'patna', 'indore', 'khanna', 'kota', 'karnal'];
-    for (const hub of hubs) {
-      if (text === hub || text.startsWith(hub)) {
-        const capitalHub = hub.charAt(0).toUpperCase() + hub.slice(1);
-        this.speak({
-          hindiText: `${capitalHub} मंडी का आज का ताज़ा सरकारी और आवक भाव नीचे आ गया है। इसे देखकर आप अपनी फसल का सही दाम तय कर सकते हैं।`,
-          romanText: `${capitalHub} mandi ka taaza bhav aa gaya hai. Isse dekhkar sahi daam tay karein.`,
-          key: `mandi-hub-${hub}`
-        });
-        return;
-      }
-    }
-
-    // 17. Register / Create Account
-    if (text.includes('create an account') || text.includes('register') || text.includes('खाता बनाएं')) {
-      this.speak({
-        hindiText: 'एग्रीफेयर में आपका स्वागत है। नया खाता बनाने के लिए नीचे अपनी जानकारी भरें।',
-        romanText: 'AgriFair me swagat hai. Naya khata banane ke liye jankari bharein.',
-        key: 'action-register-page'
-      });
+    // Name field (register)
+    if ((name === 'name' || id === 'name') && (ph.includes('name') || ph.includes('ramesh'))) {
+      this.speak({ hindiText: 'Yahan apna poora naam likhein.', key: 'f-regname' });
       return;
     }
 
-    // 18. Register Name field
-    if (name === 'name' && (placeholder.includes('name') || placeholder.includes('ramesh'))) {
-      this.speak({
-        hindiText: 'यहाँ किसान भाई अपना पूरा नाम लिखें।',
-        romanText: 'Yahan kisan bhai apna poora naam likhein.',
-        key: 'field-register-name'
-      });
+    // Phone
+    if (name === 'phone' || type === 'tel' || ph.includes('phone') || ph.includes('98765')) {
+      this.speak({ hindiText: 'Yahan apna 10 ank ka mobile number dalein.', key: 'f-phone' });
       return;
     }
 
-    // 19. Register Phone field
-    if (name === 'phone' || placeholder.includes('phone') || placeholder.includes('98765')) {
-      this.speak({
-        hindiText: 'यहाँ अपना 10 अंकों का मोबाइल नंबर दर्ज करें।',
-        romanText: 'Yahan apna 10-digit mobile number dalein.',
-        key: 'field-register-phone'
-      });
+    // Email
+    if (type === 'email' || name === 'email' || ph.includes('email') || ph.includes('gmail')) {
+      this.speak({ hindiText: 'Yahan apna email pata dalein.', key: 'f-email' });
       return;
     }
 
-    // 20. Email field
-    if (name === 'email' || type === 'email' || placeholder.includes('email')) {
-      this.speak({
-        hindiText: 'यहाँ अपना ईमेल पता दर्ज करें।',
-        romanText: 'Yahan apna email pata dalein.',
-        key: 'field-email'
-      });
+    // Password
+    if (name === 'password' || type === 'password' || id === 'password') {
+      this.speak({ hindiText: 'Yahan apna gupt password banayein. Kam se kam 6 ank ka hona chahiye.', key: 'f-pass' });
       return;
     }
 
-    // 21. Role Selection (Farmer vs Buyer)
-    if (text.includes('farmer') || text.includes('grower') || text.includes('list crops')) {
-      this.speak({
-        hindiText: 'आपने किसान (Farmer) चुना है। इससे आप अपनी फसलें ऑनलाइन सीधे व्यापारियों को बेच सकेंगे।',
-        romanText: 'Aapne Farmer chuna hai. Isse aap fasal seedhe vyapariyon ko bech sakenge.',
-        key: 'role-select-farmer'
-      });
+    // Confirm Password
+    if (name === 'confirmpassword' || id.includes('confirm')) {
+      this.speak({ hindiText: 'Yahan wahi password dobara dalein taaki koi galti na ho.', key: 'f-cpass' });
       return;
     }
 
-    if (text.includes('wholesaler') || text.includes('retailer') || text.includes('bulk / institutional')) {
-      this.speak({
-        hindiText: 'आपने खरीदार (Buyer) चुना है। यहाँ से आप सीधे किसानों से थोक माल खरीद सकेंगे।',
-        romanText: 'Aapne Buyer chuna hai. Yahan se aap kisanon se seedhe fasal khareed sakenge.',
-        key: 'role-select-buyer'
-      });
+    // Search fields
+    if (type === 'search' || ph.includes('search') || ph.includes('lucknow') || ph.includes('apmc') || ph.includes('mandi')) {
+      this.speak({ hindiText: 'Yahan apne sheher ya mandi ka naam likhein. Jaise Lucknow, Kanpur ya Gorakhpur.', key: 'f-search' });
       return;
     }
 
-    // 22. Password field
-    if (name === 'password' || type === 'password') {
-      this.speak({
-        hindiText: 'यहाँ अपना 6 या 8 अंकों का गुप्त पासवर्ड बनाएं जो आपको याद रहे।',
-        romanText: 'Yahan apna surakshit password banayein.',
-        key: 'field-password'
-      });
+    // ── BUTTONS AND LINKS ────────────────────────────────────────────────────
+
+    // Sell / Post Listing button
+    if (txt.includes('post new produce') || txt.includes('post / manage') || txt.includes('sell produce') || txt.includes('fasal bechein') || txt.includes('new listing')) {
+      this.speak({ hindiText: 'Yahan click karein apni fasal bechne ke liye. Hum aapko step by step batayenge kya bharna hai.', key: 'btn-sell' });
       return;
     }
 
-    // 23. Confirm Password field
-    if (name === 'confirmpassword') {
-      this.speak({
-        hindiText: 'यहाँ वही पासवर्ड दोबारा डालें ताकि कोई गलती न रहे।',
-        romanText: 'Yahan wahi password dobara dalein taaki galti na ho.',
-        key: 'field-confirm-password'
-      });
+    // Create Listing
+    if (txt.includes('create listing') || txt.includes('post listing') || txt.includes('publish')) {
+      this.speak({ hindiText: 'Bahut badhiya. Aapki fasal listing AgriFair market mein jud rahi hai. Khareedaar jald aapse sampark karenge.', key: 'btn-create' });
       return;
     }
 
-    // 24. Chat / Deal button (Direct negotiation)
-    if (
-      text.includes('chat / deal') ||
-      text.includes('deal') ||
-      text.includes('negotiate') ||
-      ariaLabel.includes('chat')
-    ) {
-      this.speak({
-        hindiText: 'किसान और खरीदार की सीधी बातचीत शुरू हो गई है। यहाँ आप भाव पर मोलभाव करके अंतिम सौदा पक्का कर सकते हैं।',
-        romanText: 'Kisan aur khareedaar ki seedhi baat shuru ho gayi hai. Yahan mol-bhav karke sauda pakka karein.',
-        key: 'action-chat-deal'
-      });
+    // Mandi Rates button
+    if (txt.includes('mandi') || txt.includes('mandi rates') || txt.includes('mandi bhav') || ariaLabel.includes('mandi')) {
+      this.speak({ hindiText: 'Mandi Bhav kendra khul raha hai. Upar search mein apne sheher ka naam likhein jaise Lucknow ya Khanna. Wahan ka aaj ka bhav dikhega.', key: 'btn-mandi' });
       return;
     }
 
-    // 25. View Lot Details
-    if (text.includes('view lot details') || text.includes('lot details')) {
-      this.speak({
-        hindiText: 'यहाँ फसल की पूरी परख, फोटो, नमी और किसान के गाँव की जानकारी देख सकते हैं।',
-        romanText: 'Yahan fasal ki jaankari, photo, nami aur kisan ke gaon ki jaankari dekhein.',
-        key: 'action-view-lot'
-      });
+    // Pay Online / Razorpay
+    if (txt.includes('pay online') || txt.includes('razorpay') || txt.includes('pay now')) {
+      this.speak({ hindiText: 'Razorpay se 100 pratishat surakshit online payment ho rahi hai. Apna UPI, card ya net banking chunein.', key: 'btn-pay' });
       return;
     }
 
-    // 26. Pay Online (Razorpay)
-    if (text.includes('pay online') || text.includes('razorpay')) {
-      this.speak({
-        hindiText: 'यहाँ से रेजरपे द्वारा 100% सुरक्षित ऑनलाइन भुगतान कर सकते हैं।',
-        romanText: 'Yahan se Razorpay dwara surakshit online payment kar sakte hain.',
-        key: 'action-pay-online'
-      });
+    // Live Map Track
+    if (txt.includes('live map') || txt.includes('map track') || txt.includes('gps map') || txt.includes('track map')) {
+      this.speak({ hindiText: 'Live GPS Map tracking khul rahi hai. Yahan aap apni fasal ki gaadi ko sadak par chalte hue dekh sakte hain. Neeche kul doori aur pahunchne ka samay bhi dikhega.', key: 'btn-maptrack' });
       return;
     }
 
-    // 27. Live Map Track
-    if (text.includes('live map track') || text.includes('map track') || text.includes('gps map')) {
-      this.speak({
-        hindiText: 'लाइव जीपीएस मैप ट्रैकिंग खुल गई है। यहाँ आप अपनी फसल की गाड़ी को सड़क पर चलते हुए देख सकते हैं। कुल दूरी और पहुँचने का समय नीचे दिया गया है।',
-        romanText: 'Live GPS Map tracking khul gayi hai. Yahan gaadi aur pahunchne ka samay dekh sakte hain.',
-        key: 'action-live-map-track'
-      });
+    // Track Consignment
+    if (txt.includes('track consignment') || txt.includes('consignment')) {
+      this.speak({ hindiText: 'Yahan se dekhein ki aapki fasal ki gaadi kahan tak pahunchi hai aur delivery ka kya status hai.', key: 'btn-track' });
       return;
     }
 
-    // 28. Track Consignment
-    if (text.includes('track consignment') || text.includes('tracking')) {
-      this.speak({
-        hindiText: 'यहाँ से देखें कि आपकी फसल की गाड़ी कहाँ तक पहुँची है और डिलीवरी का क्या स्टेटस है।',
-        romanText: 'Yahan se dekhein ki aapki gaadi kahan tak pahunchi hai.',
-        key: 'action-track-consignment'
-      });
+    // Chat / Deal
+    if (txt.includes('chat') || txt.includes('deal') || txt.includes('negotiate') || ariaLabel.includes('chat')) {
+      this.speak({ hindiText: 'Kisan aur khareedaar ki seedhi baat shuru ho rahi hai. Yahan aap daam par mol bhav karke antim sauda pakka kar sakte hain.', key: 'btn-chat' });
       return;
     }
 
-    // 28. Sahayak Chat toggle
-    if (text.includes('agrifair sahayak') || id.includes('agrifair-assistant-toggle')) {
-      this.speak({
-        hindiText: 'नमस्ते! मैं एग्रीफेयर एआई सहायक हूँ। आप मुझसे बोलकर या लिखकर मंडी भाव और फसलों के बारे में कुछ भी पूछ सकते हैं।',
-        romanText: 'Namaste! Mai AgriFair AI Sahayak hoon. Mujhse mandi bhav ya fasal ke baare me pooch sakte hain.',
-        key: 'action-open-sahayak'
-      });
+    // View Lot / Details
+    if (txt.includes('view lot') || txt.includes('lot details') || txt.includes('view details')) {
+      this.speak({ hindiText: 'Yahan fasal ki poori jankari dikhegi. Jaise photo, nami ka percent, gaon ka naam aur kisan ka vivaran.', key: 'btn-lot' });
       return;
     }
 
-    // 29. Marketplace Link
-    if (text.includes('marketplace') || text.includes('view marketplace')) {
-      this.speak({
-        hindiText: 'यह एग्रीफेयर बाज़ार है। यहाँ देशभर की ताज़ा फसलें और किसानों की लिस्टिंग उपलब्ध हैं।',
-        romanText: 'Yeh AgriFair marketplace hai, yahan taaza faslein uplabdh hain.',
-        key: 'nav-marketplace'
-      });
+    // Register button
+    if (txt.includes('create an account') || txt.includes('register') || id.includes('register')) {
+      this.speak({ hindiText: 'AgriFair mein aapka swagat hai. Naya khata banane ke liye neeche apni jankari bharein.', key: 'btn-register' });
       return;
     }
 
-    // 30. My Orders Link
-    if (text.includes('my orders') || text.includes('orders')) {
-      this.speak({
-        hindiText: 'यहाँ आपके द्वारा किए गए सभी सौदे और ऑर्डर की सूची दिखेगी।',
-        romanText: 'Yahan aapke sabhi orders aur saude dikhenge.',
-        key: 'nav-orders'
-      });
+    // Login button
+    if (txt.includes('login') || txt.includes('sign in') || id.includes('login')) {
+      this.speak({ hindiText: 'Apna email ya mobile number aur password dalein aur login karein.', key: 'btn-login' });
+      return;
+    }
+
+    // Farmer role selection
+    if (txt.includes('farmer') || txt.includes('grower') || txt.includes('list crops')) {
+      this.speak({ hindiText: 'Aapne Kisan chuna hai. Isse aap apni fasalein online seedhe khareeddaron ko bech sakenge.', key: 'role-farmer' });
+      return;
+    }
+
+    // Buyer role selection
+    if (txt.includes('wholesaler') || txt.includes('retailer') || txt.includes('buyer') || txt.includes('bulk')) {
+      this.speak({ hindiText: 'Aapne Khareedaar chuna hai. Yahan se aap seedhe kisanon se taza maal khareed sakenge.', key: 'role-buyer' });
+      return;
+    }
+
+    // Cancel Request
+    if (txt.includes('cancel request') || txt.includes('cancel order')) {
+      this.speak({ hindiText: 'Kya aap sach mein yeh order cancel karna chahte hain. Ek baar cancel ho gaya to wapas nahin hoga.', key: 'btn-cancel' });
+      return;
+    }
+
+    // Accept / Confirm order
+    if (txt.includes('accept') || txt.includes('confirm order')) {
+      this.speak({ hindiText: 'Is order ko sweekar karne ke liye confirm karein. Khareedaar ko soochna bhej di jayegi.', key: 'btn-accept' });
+      return;
+    }
+
+    // Agrifair Sahayak chat toggle
+    if (txt.includes('agrifair sahayak') || id.includes('assistant')) {
+      this.speak({ hindiText: 'Namaste. Main AgriFair AI Sahayak hoon. Aap mujhse mandi bhav ya fasal ke baare mein kuch bhi pooch sakte hain.', key: 'btn-sahayak' });
+      return;
+    }
+
+    // Nav: Marketplace
+    if (txt === 'marketplace' || txt.includes('view marketplace')) {
+      this.speak({ hindiText: 'Yeh AgriFair ka baazaar hai. Yahan deshbhar ke kisanon ki taaza fasalein uplabdh hain.', key: 'nav-market' });
+      return;
+    }
+
+    // Nav: My Orders
+    if (txt.includes('my orders') || txt === 'orders') {
+      this.speak({ hindiText: 'Yahan aapke sabhi orders aur saude ki suchi dikhegi.', key: 'nav-orders' });
+      return;
+    }
+
+    // Nav: Categories
+    if (txt === 'categories') {
+      this.speak({ hindiText: 'Yahan aap fasal ki shreni ke anusaar dekh sakte hain jaise Anaj, Daal ya Phal.', key: 'nav-cat' });
+      return;
     }
   }
 }
 
 const voiceGuideService = new VoiceGuideService();
 export default voiceGuideService;
-

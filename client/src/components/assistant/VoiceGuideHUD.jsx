@@ -144,11 +144,6 @@ export default function VoiceGuideHUD() {
             <p className="text-sm sm:text-base font-semibold text-white leading-snug">
               {state.currentText}
             </p>
-            {state.currentRoman && (
-              <p className="text-xs text-slate-400 leading-normal font-sans italic">
-                "{state.currentRoman}"
-              </p>
-            )}
           </div>
 
           {/* Audio Equalizer Bars when speaking */}
